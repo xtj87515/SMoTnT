@@ -1,8 +1,3 @@
----
-output:
-  pdf_document: default
-  html_document: default
----
 This repo contains the code and associated files for "", currently found on biorxiv (https://www.biorxiv.org/).
 
 ## Repo organization and simulation pipeline
