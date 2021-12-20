@@ -1,0 +1,147 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../figures/"
+```
+
+```{r}
+figure5a <- allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMPSR>0.6) %>% 
+  select(ORF, RMPSR, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMPSR, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  #scale_y_log10() +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0,  ORF!="YER053C-A")%>%select(RMPSR))))),
+             color="red", linetype="dashed") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean protein synthesis rates\n(not showing < 0.6)") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome protection index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "top",
+    legend.justification = "left"
+  )
+
+
+figure5b <- allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>% 
+  select(ORF, RMTE, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMTE, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  #scale_y_log10() +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A")%>%select(RMTE))))),
+             color="red", linetype="dashed") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation efficiency \n(not showing < 0.7)") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome protection index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "none",
+    legend.justification = "left"
+  )
+ 
+
+figure5c <- allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MMDP>1e-05) %>% 
+  select(ORF, MMDP, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=MMDP, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  scale_y_log10(labels = scales::percent_format(accuracy = 0.01L)) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="CMD proportion") +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A")%>%select(MMDP))))), 
+             color="red", linetype="dashed") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome\nprot index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "none"
+  )
+
+######################################################### figure5d  
+
+
+figure5d <- allSimInputOutput%>%
+  filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo!="mRNAconstant") %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMMDR, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput%>%filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo=="dc_1_r_0")%>%select(RMMDR))), na.rm = TRUE)), 
+             color="red", linetype="dashed") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Ratio between output/input decay rates") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome\nprot index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "none"
+  )
+  
+
+```
+
+```{r fig.height = 10, fig.width=12.5}
+figure5 <- (figure5a+figure5b)/(figure5c+figure5d)
+figure5 + 
+  plot_annotation(
+    title = "Figure 5",
+    tag_levels = 'A') 
+
+ggsave(paste0(figureBaseFolder, "d_fig_5.png"), dpi=200, height = 10, width = 12.5)
+
+```
+
+
+```{r fig.height=5,fig.width=12}
+allSimInputOutput %>%
+  filter(paraCombo == "dc_0_r_0", mRNADecRateNeymotin_sec != 0,mRNAabundance>1, ORF!="YER053C-A", ORF!="YLR106C") %>%  #remove the gene with HL=450min, also an outlier gene "YLR106C" with RMTE==0.6
+  select(ORF,paraCombo,RMMDR,mRNAabundance_log10,iniProb_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+  `colnames<-`(c("ORF","paraCombo","RMMDR","log(mRNALevel)","log(IniProb)", "log(DecRate)", "CAI", "log(Length)")) %>%
+  pivot_longer(cols = -c(RMMDR, paraCombo, ORF), names_to = "feature", values_to = "featureVal") %>%
+  ggplot(aes(x=featureVal,y=RMMDR,color=paraCombo)) +
+  geom_point(size=0.5) +
+  facet_wrap(~feature, scales = "free", nrow=1, strip.position = "bottom") +
+  theme_bw() +
+  scale_y_log10() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="black",size=rel(1.2)),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank(),
+            strip.background = element_blank(),  
+            strip.placement = "outside"     #to put the strip labels below x-axis
+    ) +
+      labs(x = "",
+           y = "Output/input decay rates") +
+      geom_smooth(method="lm") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.8, size=5) +
+      scale_color_manual(name="",labels=c(""), values = c("dc_0_r_0" = "#1F78B4"))
+```

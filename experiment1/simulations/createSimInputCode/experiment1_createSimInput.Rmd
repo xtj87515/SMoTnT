@@ -1,0 +1,65 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+Load libraries and public variables
+```{r, include=FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+### Use the output data from trial data (for the gene_sp_mRNAcount_perMin) in order to get the scaled mRNA synthesis rates. See Methods for detailed explanation
+```{r}
+# trial h5 file structure--> 1st level: 4839 genes, 2nd: "gene_sp_mRNAcount_perMin", 3rd: dc/r combo or mRNAconstant, 4th:100 rep X 720 min
+trial_h5file <- paste0("trialH5data/trial_gene_sp_mRNAcount_perMin.h5") 
+
+# h5read(trial_h5file,'YAL001C/gene_sp_mRNAcount_perMin/dc_0_r_0')
+# h5read(trial_h5file,'YAL001C/gene_sp_mRNAcount_perMin/dc_1_r_0')
+```
+
+### The scaled mRNA synthesis rates are calculated from previous trial simulations (exp11), based on both the synthesis rates and simulated mRNA count for the trial runs (exp11).
+```{r}
+# This file below ("exp11_allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv") was copied from "exp0/utilities/prepFiles/exp11_allGenesDecrEqualsSynrWithScaling_S.cer.mRNA.abndc.ini.syn.dec". We will use the mRNA synthesis rates contained in it as a baseline to adjust the scaled mRNA synthesis rates for different dc/r combos. This will generate an additional 24-1=23 input files that contain the mRNA synthesis/degradation rates for the simulations. 
+exp11decSynFile <- read_tsv("exp11_allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv", col_names = FALSE)
+exp11mRNAsynRate <- exp11decSynFile$X3 # 3rd column contains the mRNA synthesis rates
+```
+
+### Step 1: copy the above file into simInput/ and rename it. It will serve as one (out of 25 dc/r combos) of the input files for the simulations. Also copy the input file for mRNA constant from previous trial runs.
+```{r}
+write_tsv(exp11decSynFile, file="../simInput/allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv")
+write_tsv(read_tsv("exp0_allGenes_mRNAconstant_S.cer.mRNA.ini.abndc.syn.dec.tsv"), file="../simInput/allGenes_mRNAconstant_S.cer.mRNA.ini.abndc.syn.dec.tsv")
+```
+
+### Step 2: build the rest 25 dc/r combo - 2 = 23 input files for the simulations.
+```{r}
+# open a file handle
+fileHandle <- H5Fopen(trial_h5file)
+
+# the output data frame that will be written into each of the 23 simulation input files, one more column containing the scaled mRNA synthesis rates will be added below
+outdf <- simInputFeatures[,c("iniProb","mRNAabundance","mRNADecRateNeymotin_sec")] 
+# forcing the first column to not show as scientific notation, otherwise making it diffcult to compare with the input files from previous experiments
+outdf$iniProb <- format(outdf$iniProb, scientific=FALSE) 
+
+for(dc.r in dc.r.df$paraCombo[!dc.r.df$paraCombo %in% c("dc_1_r_0","mRNAconstant")]){  # excluding dc_1_r_0 and mRNAconstant
+    scaleFactorVec <- c()  # vector containing 4839 numbers, each number = scaleFactor for each gene
+    for(i in 1:geneNumbers){
+        meanCountmRNA <- mean(h5read(fileHandle,paste(geneNames[i],"gene_sp_mRNAcount_perMin",dc.r,sep="/")))
+        scaleFactor <- meanCountmRNA/outdf$mRNAabundance[i] # Through trial runs we found this factor can adjust the real time mRNA counts for mRNA varying to largely equal to mRNA constant
+        scaleFactorVec <- c(scaleFactorVec, scaleFactor)
+    }
+    outdf$scaledmRNASynRate <- exp11mRNAsynRate/scaleFactorVec
+    # rearrange the order of the columns
+    outdf <- outdf[,c("iniProb","mRNAabundance","scaledmRNASynRate","mRNADecRateNeymotin_sec")] 
+    
+    outFileName <- paste0("../simInput/allGenesDecrEqualsSynrWithScaling_",dc.r,"_S.cer.mRNA.ini.abndc.syn.dec.tsv")
+    write_tsv(outdf,file=outFileName, col_names = FALSE)
+    print(paste(dc.r, Sys.time())) # keep track of the progress
+
+}
+
+h5closeAll() 
+```
+

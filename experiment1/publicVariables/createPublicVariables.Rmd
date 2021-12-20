@@ -1,0 +1,105 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+library(rhdf5)
+library(feather)
+library(tidyverse)
+library(ggpubr)
+library(parallel)
+```
+
+### Load the tsv file that contains all input gene names, features, mRNA decay/synthesis rates and their log transformed values when appropriate.
+```{r}
+simInputFeatures <- read_tsv("simInputFeatures.tsv") 
+# after read_tsv, the $mRNADecRateNeymotin_sec_log10 was changed from dbl to chr, have no idea why. The other dbl columns are all fine. Below is to trasform that column back to dbl.
+simInputFeatures$mRNADecRateNeymotin_sec_log10 <- as.numeric(simInputFeatures$mRNADecRateNeymotin_sec_log10)
+simInputFeatures
+```
+
+
+### Variables shared by downstream data processing and analyses
+```{r}
+experimentID <- "experiment1"
+numTechReps <- 50   # number of technical replicates, each simulation (with the same input parameters) can utilize a different seed to represent different tech reps.
+simTimeMin <- 720  # simulation output was recorded during 720 mins = 12 hours. See Methods for how this duration is chosen.
+geneNumbers <- 4839    # total number of genes 
+geneNames <- simInputFeatures$ORF
+
+```
+
+
+### dc.r.df is a data frame that specifies the combinations for the two main parameters to feed the source program.
+dc = co-translational mRNA decay probability
+r = ribosome protection index
+
+dc.r.df has 25 rows = 24 dc/r combos e.g. "dc_0.2_r_0"  "dc_0.8_r_0.1"...+ 1 "mRNAconstant"
+dc.r.df has 3 cols = "dc", "r", "combo"
+```{r}
+dc <- c(0, 0.2, 0.4, 0.6, 0.8, 1)
+r <- c(0, 0.1, 0.4, 1)
+
+dc.r.df <- tibble(dc = unlist(lapply(dc, function(i)rep(i, 4))),  
+                  r = rep(r, 6)) %>%
+           mutate(paraCombo = paste0("dc_", dc, "_r_", r)) %>% # parameter combos
+           rbind(c(NA, NA, "mRNAconstant"), .) %>%
+           mutate(paraID = paste0("V", 1:25))
+
+dc.r.df
+```
+
+
+### The raw output from the simulations are grouped into three data types- dtype1/2/3. Within each dtype they share directory structures in the output HDF5 file to certain levels. 
+dtype1: 1st level: 4839 genes, 2nd: dtype, 3rd: dc/r combo or mRNAconstant, 4th:50 tech rep X 720 min
+```{r}
+dtype1 <- c(
+    # 1-how many ribosomes hop off (= how many proteins have been translated) per minute for a particular gene
+    "gene_sp_countElng_perMin",  
+    
+    # 2-how many mRNAs has been decayed/synthesized in a minute
+    "gene_sp_decCount_perMin",  
+    
+    # 3-how long does each ribo spend on translating an mRNA for a particular gene on average
+    "gene_sp_meanElngTime_perMin", 
+    
+    # 4-average number of mRNAs (being the result of synthesis and decay) within each minute for a particular gene
+    "gene_sp_mRNAcount_perMin",  
+    
+    # 5-the average number of mRNAs marked for decay within each minute for a particular gene
+    "gene_sp_mRNAmarkedDecay_perMin", 
+    
+    # 6-how many mRNAs has been decayed/synthesized in each minute
+    "gene_sp_synCount_perMin",     
+    
+    # 7-the number of total bound ribosomes for each gene (on all the mRNAs of this gene, whether marked or not for decay) at each minute mark
+    "gene_sp_totBoundRibo_perMin", 
+    
+    # 8-variance for how long does each ribo spend on translating an mRNA for a particular gene
+    "gene_sp_varianceElngTime_perMin",  
+    
+    # 9-the variance in the number of bound ribosomes for all mRNAs (whether marked or not for decay) for each gene at each minute mark
+    "gene_sp_varianceBoundRibo_perMin")  
+
+```
+
+dtype2: 1st/2nd/3rd directory are the same as dtype1, the 4th dir is specified in the comments
+```{r}
+dtype2 <- c("gene_initimes",    # 4th:50 rep X 3 (#events, mean, var), Average time between initiation of all genes
+            "gene_totetimes",   # 4th:50 rep X 3 (#events, mean, var), Average total elongation times of all genes
+            "mRNA_lifeTimes")   # 4th:50 X 100 (=5000 life time data point, some spots will be filled with NAs since not all genes would have 5000 life times collected). 
+```
+
+dtype3: 1st: dtype, 2nd: dc/r combo or mRNAconstant, higher dir(s) are specified in the comments
+```{r}
+dtype3 <- c("etimes",                   # 3rd: 61cid, 4th: 50rep X 2(# of events, mean), Elongation times of all codons
+            "codon_sp_elngRibo_perMin", # 3rd: 61cid, 4th: 50rep X 720min, the number of elongatable ribosomes per codon type at each minute mark 
+            "free_ribo_tRNA_perMin",    # 3rd: ribo + 41 tid, 4th: 50rep X 720min, the free ribosome number and free tRNA number per tRNA type at each minute mark
+            "avg_ribo_tRNA")            # 3rd: 50rep X 42(41ribo, 1tRNA), Average number of free ribosomes and tRNAs at equilibrium
+             
+```
+

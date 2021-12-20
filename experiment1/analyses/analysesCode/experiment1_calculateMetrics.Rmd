@@ -1,0 +1,909 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+#allSimInputOutput <- read_tsv("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+```
+
+
+
+### Refer to Supplementary Methods for the mathematical equations of each of the following calculated metrics.
+```{r}
+# mpsr = mean protein synthesis rates;  
+calculate_gene_sp_mpsr <- function(geneID, simOutputH5){   
+    # outvec has 25 elements. Each element is the mpsr (# of ribos that hop off per min for a gene) for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    # matrix that contains countElng info for current selected gene in mRNAconstant data
+    # ps = protein synthesis
+    # mpsr = mean protein synthesis rate
+    ps_mRNAconstant <- h5read(simOutputH5, paste0(currentGene, "/gene_sp_countElng_perMin/mRNAconstant"))
+    mpsr_mRNAconstant <- mean(ps_mRNAconstant)
+    outvec <- c(outvec, mpsr_mRNAconstant)
+    
+    # loop through the dc/r parameter space to calculate the mean_countElng_mRNAvarying
+    for(i in 2:nrow(dc.r.df)){
+        ps_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mpsr_mRNAvarying <- mean(ps_mRNAvarying)
+        outvec <- c(outvec, mpsr_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+
+```{r}
+# mvps = mean of the (variance in protein synthesis among simu times) among technical replicates 
+calculate_gene_sp_mvps <- function(geneID, simOutputH5){  
+    # outvec has 25 elements. Each element is the mvps for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # matrix that contains countElng info for current selected gene in mRNAconstant data
+    ps_mRNAconstant <- h5read(simOutputH5, paste0(currentGene, "/gene_sp_countElng_perMin/mRNAconstant"))
+    # get variance for each row(rep) and then get the mean for all reps
+    mvps_mRNAconstant <- mean(apply(ps_mRNAconstant, 1, var))  
+    outvec <- c(outvec, mvps_mRNAconstant)
+    
+    # loop through the dc/r parameter space 
+    for(i in 2:nrow(dc.r.df)){ 
+        # ps_mRNAvarying is a 50 X 720 matrix
+        ps_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # get variance for each row (rech rep) and then get the mean for all technial reps
+        mvps_mRNAvarying <- mean(apply(ps_mRNAvarying, 1, var, na.rm = TRUE))  
+        outvec <- c(outvec, mvps_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# cvps = coefficient variation of total protein produced per minute
+calculate_gene_sp_cvps <- function(geneID, simOutputH5){  
+    # outvec is a vector that has 25 elements. Each element is the mvps for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space to calculate the mean_countElng_mRNAvarying
+    for(i in 1:nrow(dc.r.df)){ 
+        ps <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mpsr <- mean(ps) # mean
+        # get standard deviation for each row(rep) and then get the mean for all reps
+        sdps <- mean(apply(ps, 1, sd, na.rm = TRUE))  
+        # cvps = coefficient of variation of protein synthesis
+        cvps <- sdps/mpsr 
+        outvec <- c(outvec, cvps)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+
+```{r}
+# cpsr = cellular protein synthesis rate, this function returns the cpsr for 50 technical replicate that is of the same paraCombo, it is therefore not joined into allSimInputOutput
+# pid = parameter id, 1:25, 1 = mRNAconstant, 2:25 = different dc/r combos, output is a number
+calculate_para_sp_cpsr <- function(pid){  
+    # there are 25 para combo * 50 reps = 1250 files in this folder                              
+    countElngFolder <- paste0(rawSimOutFolder, "/gene_sp_countElng_perMin/") 
+    
+    # N = # of tech reps, here NcountElngFiles contains 50 file contents
+    if(pid == 1){
+        NcountElngFiles <- list.files(countElngFolder, pattern = glob2rx(paste0("*dc_0_r_0_mRNAconstant*")))
+    }else{
+        NcountElngFiles <- list.files(countElngFolder, pattern = glob2rx(paste0("*", dc.r.df$paraCombo[pid], "_allGenesDecrEqualsSynrScaling*")))
+    }
+    
+    cpsr.all.techRep <- c()
+    for(ii in 1:numTechReps){ 
+        # cps = cellular protein synthesis, is a vector that contains 719 numbers(720-1)
+        cps = apply(read.table(file = paste0(countElngFolder, NcountElngFiles[ii]))[, 2:4840], 1, sum) # get the sum of each line in a single file
+      
+        # cps give a vector of 719 numbers, then you get the mean of those 719 numbers
+        # cpsr = cellular protein synthesis rate
+        cpsr <- mean(cps)
+        cpsr.all.techRep <- c(cpsr.all.techRep, cpsr)  # this will contain 50 numbers
+    }
+
+    return(cpsr.all.techRep)
+}
+```
+
+
+```{r}
+# mcpsr = mean cellular protein synthesis rate among technical reps
+# parameter id, 1:25, 1 = mRNAconstant, 2:25 = different dc/r combos, output is a number
+calculate_para_sp_mcpsr <- function(pid){  
+    # there are 25 para combo * 50 reps = 1250 files in this folder                  
+    countElngFolder <- paste0(rawSimOutFolder, "/gene_sp_countElng_perMin/") 
+    
+    # N = # of tech reps, here NcountElngFiles contains 50 file contents
+    if(pid == 1){
+        NcountElngFiles <- list.files(countElngFolder, pattern = glob2rx(paste0("*dc_0_r_0_mRNAconstant*")))
+    }else{
+        NcountElngFiles <- list.files(countElngFolder, pattern = glob2rx(paste0("*", dc.r.df$paraCombo[pid], "_allGenesDecrEqualsSynrScaling*")))
+    }
+    
+    cpsr.all.techRep <- c()
+    for(ii in 1:numTechReps){
+        # cps = cellular protein synthesis, is a vector that contains 720 numbers
+        # get the sum of each line in a single file
+        cps = apply(read.table(file = paste0(countElngFolder, NcountElngFiles[ii]))[, 2:4840], 1, sum) 
+        
+        # cpsr = cellular protein synthesis rate = get the mean of those 720 numbers in cps
+        cpsr <- mean(cps)
+        # this will contain 50 numbers, 1 for each tech rep
+        cpsr.all.techRep <- c(cpsr.all.techRep, cpsr)  
+    }
+    # mean of the cpsr among 50 technical reps
+    mcpsr <- mean(cpsr.all.techRep)
+    return(mcpsr)
+}
+```
+
+```{r}
+# mte = mean translation efficiency
+calculate_gene_sp_mte <- function(geneID, simOutputH5){   
+    # outvec has 25 elements. Each element is the mte for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes, and its initial mRNA level
+    currentGene <- geneNames[geneID]
+    mRNAabundanceCurrentGene <- simInputFeatures$mRNAabundance[geneID]
+    
+    # matrix that contains countElng info for current gene.
+    # te = translation efficiency, mte = mean translation efficiency
+    countElng_mRNAconstant <- h5read(simOutputH5, paste0(currentGene, "/gene_sp_countElng_perMin/mRNAconstant"))
+    te_mRNAconstant <- countElng_mRNAconstant/mRNAabundanceCurrentGene
+    mte_mRNAconstant <- mean(te_mRNAconstant)
+    outvec <- c(outvec, mte_mRNAconstant)
+    
+    # loop through the dc/r parameter space
+    for(i in 2:nrow(dc.r.df)){ 
+        countElng_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # te = translation efficiency
+        te_mRNAvarying <- countElng_mRNAvarying/mRNAcount_mRNAvarying   
+        # change all the "Inf"s to "Nan"s
+        te_mRNAvarying[!is.finite(te_mRNAvarying)] <- NaN 
+        # mte = mean translation rate averaged over time and tech reps
+        mte_mRNAvarying <- mean(te_mRNAvarying, na.rm = TRUE) 
+        outvec <- c(outvec, mte_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mvte = mean of the variance in translation efficiency
+calculate_gene_sp_mvte <- function(geneID, simOutputH5){     
+    # outvec has 25 elements. Each element is the mvte for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes, and its initial mRNA level
+    currentGene <- geneNames[geneID]
+    mRNAabundanceCurrentGene <- simInputFeatures$mRNAabundance[geneID]
+    
+    # matrix that contains countElng info for current selected gene
+    countElng_mRNAconstant <- h5read(simOutputH5, paste0(currentGene, "/gene_sp_countElng_perMin/mRNAconstant"))
+    te_mRNAconstant <- countElng_mRNAconstant/mRNAabundanceCurrentGene
+    # get variance for each row(rep) and then get the mean for all reps
+    mvte_mRNAconstant <- mean(apply(te_mRNAconstant, 1, var, na.rm = TRUE))  
+    outvec <- c(outvec, mvte_mRNAconstant)
+    
+    # loop through the dc/r parameter space
+    for(i in 2:nrow(dc.r.df)){  
+        countElng_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # te = translation rate
+        te_mRNAvarying <- countElng_mRNAvarying/mRNAcount_mRNAvarying   
+        # change all the "Inf"s to "Nan"s
+        te_mRNAvarying[!is.finite(te_mRNAvarying)] <- NaN 
+        # get var for each row(rep) and then get the mean for all reps
+        mvte_mRNAvarying <- mean(apply(te_mRNAvarying, 1, var, na.rm = TRUE))  
+        outvec <- c(outvec, mvte_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+
+
+
+```{r}
+# mmc = mean mRNA count
+calculate_gene_sp_mmc <- function(geneID, simOutputH5){   
+    # outvec has 25 elements. Each element is the mmc for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes,  and its initial mRNA level
+    currentGene <- geneNames[geneID]
+    mRNAabundanceCurrentGene <- simInputFeatures$mRNAabundance[geneID]
+    outvec <- c(outvec, mRNAabundanceCurrentGene)
+    
+    # loop through the dc/r parameter space
+    for(i in 2:nrow(dc.r.df)){  
+        mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mmc_mRNAvarying <- mean(mRNAcount_mRNAvarying)
+        outvec <- c(outvec, mmc_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mvmc = mean of the variance in mRNA count
+calculate_gene_sp_mvmc <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the mvmc for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    mvmc_mRNAconstant <- 0  # the variance in mRNA count for mRNAconstant is 0
+    outvec <- c(outvec, mvmc_mRNAconstant)
+    
+    # loop through the dc/r parameter space, excluding mRNAconstant
+    for(i in 2:nrow(dc.r.df)){  
+        mc_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # get variance for each row(rep) and then get the mean for all reps
+        mvmc_mRNAvarying <- mean(apply(mc_mRNAvarying, 1, var, na.rm = TRUE))  
+        outvec <- c(outvec, mvmc_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# cvmc = coefficient variation of mRNA count
+calculate_gene_sp_cvmc <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the cvmc for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes, and its initial mRNA level
+    currentGene <- geneNames[geneID]
+    # 0 to represent mRNAconstant
+    outvec <- c(outvec, 0)
+    
+    # loop through the dc/r parameter space, excluding mRNAconstant
+    for(i in 2:nrow(dc.r.df)){  
+        mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # mmc = mean mRNA count
+        mmc_mRNAvarying <- mean(mRNAcount_mRNAvarying) 
+        # sdmc = standard deviation for each row(rep) and then get the mean for all reps
+        sdmc_mRNAvarying <- mean(apply(mRNAcount_mRNAvarying, 1, sd, na.rm = TRUE)) 
+        # cvmc = coefficient of variation
+        cvmc_mRNAvarying <- sdmc_mRNAvarying/mmc_mRNAvarying 
+        outvec <- c(outvec, cvmc_mRNAvarying)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+#"mRNA_lifeTimes", 1st level: 4839 genes, 2nd: dtype, 3rd: dc/r combo or ctrl
+# 4th:50 X 100 ( = 5000 life time data point, some spots will be filled with NAs since not all genes would have so many life times collected), the minimum distribution should have >400 life times collected.
+# mml- mean mRNA lifetimes
+calculate_gene_sp_mml <- function(geneID, simOutputH5){   
+    # outvec has 25 elements. Each element is the cvmc for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){  
+        ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))  
+        # mRNA life time averaged over simulation time
+        mml <- mean(ml, na.rm = TRUE)
+        outvec <- c(outvec, mml)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# vml- variance in mRNA lifetimes
+calculate_gene_sp_vml <- function(geneID,simOutputH5){    
+    # outvec has 25 elements. Each element is the vml for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){  
+        ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))
+        # variance in mRNA life time among 5000 values (or maybe less than 5000 filled with NAs)
+        vml <- var(as.numeric(ml), na.rm = TRUE)   
+        outvec <- c(outvec, vml)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# cvml- CV in mRNA lifetimes
+calculate_gene_sp_cvml <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the cvml for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){  
+        # mRNA lifetimes averaged over simulation time
+        ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))  
+        mml <- mean(ml, na.rm = TRUE)
+        # sdml = standard deviation in mRNA life time among 5000 values (or maybe less than 10000 filled with NAs)
+        sdml <- sd(as.numeric(ml), na.rm = TRUE)   
+        cvml <- ifelse(mml != 0, sdml/mml, 0) 
+        outvec <- c(outvec, cvml)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mmdr- mean mRNA decay rates
+calculate_gene_sp_mmdr <- function(geneID, simOutputH5){     
+    # outvec has 25 elements. Each element is the mmdr for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+
+    # loop through the dc/r parameter space 
+    for(i in 1:nrow(dc.r.df)){  
+        # ml = mRNA life time averaged over simulation time
+        ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))  
+        # mml = mean mRNA life time averaged over 5000 values (or maybe less than 10000 filled with NAs)
+        mml <- mean(ml, na.rm = TRUE)  
+        # decay rate = 1/mean lifetime
+        mmdr <- 1/mml 
+        
+        outvec <- c(outvec, mmdr)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+#"gene_sp_mRNAmarkedDecay_perMin", 1st level: 4839 genes, 2nd: dtype, 3rd: dc/r combo or mRNAconstant, 4th: 50 rep X 720 min
+# mmmd- mean mRNAs marked for decay 
+calculate_gene_sp_mmmd <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the mmmd (# of mRNA marked for decay averaged over simTimeMin and techReps for certain geneID) for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){  
+        mmd <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAmarkedDecay_perMin", dc.r.df$paraCombo[i], sep = "/")) 
+        # mean mRNA marked for decay over tech rep and simTimeMin
+        mmmd <- mean(mmd)  
+        outvec <- c(outvec, mmmd)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mmbr =  mean mRNA-averaged bound ribosome
+calculate_gene_sp_mmbr <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the mmbr for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){  
+        ribocount <- h5read(simOutputH5, paste(currentGene, "gene_sp_totBoundRibo_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        mRNAcount <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # total number of bound ribos per gene per minute per rep now divided by real time mRNA count
+        mbr <- ribocount/mRNAcount 
+        # change all the "Inf"s to "Nan"s
+        mbr[!is.finite(mbr)] <- NaN 
+        # number of bound ribos per mRNA averaged over time and tech reps
+        mmbr <- mean(mbr, na.rm = TRUE) 
+
+        outvec <- c(outvec, mmbr)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mtbr =  mean total bound ribosome (total = all mRNAs for a single gene)
+calculate_gene_sp_mtbr <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the mtbr for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space 
+    for(i in 1:nrow(dc.r.df)){  
+        tbr <- h5read(simOutputH5, paste(currentGene, "gene_sp_totBoundRibo_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # number of total bound ribos averaged over time and tech reps for each gene
+        mtbr <- mean(tbr)
+        outvec <- c(outvec, mtbr)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mvtbr = mean variance in the total bound ribosomes
+calculate_gene_sp_mvtbr <- function(geneID, simOutputH5){    
+    # outvec has 25 elements. Each element is the mvtbr for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector() 
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){   
+        vtbr <- h5read(simOutputH5, paste(currentGene, "gene_sp_varianceBoundRibo_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        # of bound ribos per mRNA averaged over time and tech reps
+        mvtbr <- mean(vtbr) 
+        outvec <- c(outvec, mvtbr)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+
+```{r}
+# mtt = mean translation time (among all ribosomes for a gene)
+calculate_gene_sp_mtt <- function(geneID, simOutputH5){  
+    # outvec has 25 elements. Each element is the mtt for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector()
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){
+        # att = average translation time among all the ribos
+        att <- h5read(simOutputH5, paste(currentGene, "gene_totetimes", dc.r.df$paraCombo[i], sep = "/"))[, 2] 
+        mtt <- mean(att)
+        outvec <- c(outvec, mtt)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+```{r}
+# mvtt = mean of variance in translation time (var among all ribosomes for a gene)
+calculate_gene_sp_mvtt <- function(geneID, simOutputH5){  
+    # outvec has 25 elements. Each element is the mvtt for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector()
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){ 
+        # vtt = variance in translation time among all the ribos
+        vtt <- h5read(simOutputH5, paste(currentGene, "gene_totetimes", dc.r.df$paraCombo[i], sep = "/"))[, 3]
+        mvtt <- mean(vtt)
+        outvec <- c(outvec, mvtt)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
+
+
+
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DON'T RUN FOLLOWING CHUNKS UNLESS THE FEATHER FILES DON'T ALREADY EXIST
+### The following chunks utilzie multithreading, make sure the mc.cores are set to approperiate numbers.
+```{r}
+print(Sys.time())
+mpsrList <- mclapply(1:4839, function(x){calculate_gene_sp_mpsr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mpsrAllgeneAlldcr <- as_tibble(do.call(rbind, mpsrList))
+
+write_feather(mpsrAllgeneAlldcr, path = "../calculatedMetrics/mpsrAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mvpsList <- mclapply(1:4839, function(x){calculate_gene_sp_mvps(geneID = x, simOutputH5= simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+
+# ncol = 25, nrow = 4839
+mvpsAllgeneAlldcr <- as_tibble(do.call(rbind, mvpsList))
+
+write_feather(mvpsAllgeneAlldcr, path = "../calculatedMetrics/mvpsAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+cvpsList <- mclapply(1:4839, function(x){calculate_gene_sp_cvps(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# 12:44 began 12:49 finish
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+cvpsAllgeneAlldcr <- as_tibble(do.call(rbind, cvpsList))
+
+write_feather(cvpsAllgeneAlldcr, path = "../calculatedMetrics/cvpsAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+cpsrList <- mclapply(1:nrow(dc.r.df), function(x){calculate_para_sp_cpsr(pid = x)}, mc.cores = 45)
+#parameter id, 1:25, 1 = mRNAconstant, 2:25 = different dc/r combos
+# took 2min
+print(Sys.time())
+
+
+# get the cpsr (cellular protein synethesis rates) of 50 tech reps for all the parameter combos
+cpsrAlldcrAllrep <- as_tibble(t(data.frame(do.call(rbind, cpsrList))))  # ncol=25 pid, nrow=50 tech reps
+colnames(cpsrAlldcrAllrep) <- dc.r.df$paraCombo
+
+write_feather(cpsrAlldcrAllrep, path = "../calculatedMetrics/cpsrAlldcrAllrep.feather")
+
+```
+
+```{r}
+print(Sys.time())
+# pid = parameter id = 1:25, 1 = mRNAconstant, 2:25 = different dc/r combos, output is a number
+mcpsrList <- mclapply(1:nrow(dc.r.df), function(x){calculate_para_sp_mcpsr(pid = x)}, mc.cores = 45)
+# took 2min
+print(Sys.time())
+
+# mcpsrAlldcr is a vector of 25 numbers
+mcpsrAlldcr <- as_tibble(data.frame(MCPSR = unlist(mcpsrList),
+                       paraID = dc.r.df$paraID))
+
+write_feather(mcpsrAlldcr, path = "../calculatedMetrics/mcpsrAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mteList <- mclapply(1:4839, function(x){calculate_gene_sp_mte(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mteAllgeneAlldcr <- as_tibble(do.call(rbind, mteList))
+
+write_feather(mteAllgeneAlldcr, path = "../calculatedMetrics/mteAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mvteList <- mclapply(1:4839, function(x){calculate_gene_sp_mvte(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 3 min
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mvteAllgeneAlldcr <- as_tibble(do.call(rbind, mvteList))
+
+write_feather(mvteAllgeneAlldcr, path = "../calculatedMetrics/mvteAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mmcList <- mclapply(1:4839, function(x){calculate_gene_sp_mmc(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mmcAllgeneAlldcr <- as_tibble(do.call(rbind, mmcList))
+
+write_feather(mmcAllgeneAlldcr, path = "../calculatedMetrics/mmcAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mvmcList <- mclapply(1:4839, function(x){calculate_gene_sp_mvmc(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mvmcAllgeneAlldcr <- as_tibble(do.call(rbind, mvmcList))
+
+write_feather(mvmcAllgeneAlldcr, path = "../calculatedMetrics/mvmcAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+cvmcList <- mclapply(1:4839, function(x){calculate_gene_sp_cvmc(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# 12:44 began 12:49 finish
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+cvmcAllgeneAlldcr <- as_tibble(do.call(rbind, cvmcList))
+
+write_feather(cvmcAllgeneAlldcr, path = "../calculatedMetrics/cvmcAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mmlList <- mclapply(1:4839, function(x){calculate_gene_sp_mml(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mmlAllgeneAlldcr <- as_tibble(do.call(rbind, mmlList))
+
+write_feather(mmlAllgeneAlldcr, path = "../calculatedMetrics/mmlAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+vmlList <- mclapply(1:4839, function(x){calculate_gene_sp_vml(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+vmlAllgeneAlldcr <- as_tibble(do.call(rbind, vmlList))
+
+write_feather(vmlAllgeneAlldcr, path = "../calculatedMetrics/vmlAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+cvmlList <- mclapply(1:4839, function(x){calculate_gene_sp_cvml(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+cvmlAllgeneAlldcr <- as_tibble(do.call(rbind, cvmlList))
+
+write_feather(cvmlAllgeneAlldcr, path = "../calculatedMetrics/cvmlAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mmdrList <- mclapply(1:4839, function(x){calculate_gene_sp_mmdr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mmdrAllgeneAlldcr <- as_tibble(do.call(rbind, mmdrList))
+
+write_feather(mmdrAllgeneAlldcr, path = "../calculatedMetrics/mmdrAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mmmdList <- mclapply(1:4839, function(x){calculate_gene_sp_mmmd(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 3 min
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mmmdAllgeneAlldcr <- as_tibble(do.call(rbind, mmmdList))
+
+write_feather(mmmdAllgeneAlldcr, path = "../calculatedMetrics/mmmdAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mmbrList <- mclapply(1:4839, function(x){calculate_gene_sp_mmbr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mmbrAllgeneAlldcr <- as_tibble(do.call(rbind, mmbrList))
+
+write_feather(mmbrAllgeneAlldcr, path = "../calculatedMetrics/mmbrAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mtbrList <- mclapply(1:4839, function(x){calculate_gene_sp_mtbr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mtbrAllgeneAlldcr <- as_tibble(do.call(rbind, mtbrList))
+
+write_feather(mtbrAllgeneAlldcr, path = "../calculatedMetrics/mtbrAllgeneAlldcr.feather")
+```
+
+```{r}
+print(Sys.time())
+mvtbrList <- mclapply(1:4839, function(x){calculate_gene_sp_mvtbr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mvtbrAllgeneAlldcr <- as_tibble(do.call(rbind, mvtbrList))
+
+write_feather(mvtbrAllgeneAlldcr, path = "../calculatedMetrics/mvtbrAllgeneAlldcr.feather")
+```
+
+
+```{r}
+print(Sys.time())
+mttList <- mclapply(1:4839, function(x){calculate_gene_sp_mtt(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mttAllgeneAlldcr <- as_tibble(do.call(rbind, mttList))
+
+write_feather(mttAllgeneAlldcr, path = "../calculatedMetrics/mttAllgeneAlldcr.feather")
+
+```
+
+
+```{r}
+print(Sys.time())
+mvttList <- mclapply(1:4839, function(x){calculate_gene_sp_mvtt(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+mvttAllgeneAlldcr <- as_tibble(do.call(rbind, mvttList))
+
+write_feather(mvttAllgeneAlldcr, path = "../calculatedMetrics/mvttAllgeneAlldcr.feather")
+
+```
+
+# calculating the mean number of free ribos (averaged over simTimeMin and techReps) for all dc.r.combos
+```{r}
+# MFR = mean free ribo
+# RMFR = relative mean free ribo
+mfr <- c() 
+# loop through the dc/r parameter space
+for(i in 1:nrow(dc.r.df)){ 
+    # free_ribo averaged by simTimeMin and techReps
+    mfr <- c(mfr, mean(h5read(simOutputH5, paste("free_ribo_tRNA_perMin", dc.r.df$paraCombo[i], "ribo", sep = "/")), na.rm = TRUE))
+}
+
+rmfr <- mfr/mfr[1]
+rmfr_df <- as_tibble(data.frame(RMFR = rmfr,
+                      MFR = mfr,
+                      paraID = dc.r.df$paraID))
+
+```
+
+
+# getting all input features and output results together in allSimInputOutput
+```{r}
+# convert any input dataframes (e.g. mteAllgeneAlldcr) to long format
+df.convert.fun <- function(x){   
+    inputdf = calculatedMetrics.list[[x]]
+    dfname = str_sub(toupper(names(calculatedMetrics.list)[[x]]), 1, -14)
+
+    inputdf %>%
+        mutate(ORF = simInputFeatures$ORF) %>%
+        gather_(key_col = "paraID", value_col = dfname, gather_cols = colnames(inputdf)[1:nrow(dc.r.df)])
+
+}
+
+# Read in the files that conatins "AllgeneAlldcr.feather", these files can be left_joined by "paraID" and "ORF"
+files.locs <- dir("../calculatedMetrics", pattern = "AllgeneAlldcr.feather", full.names = TRUE)
+
+# read_feather for all the files in this location
+calculatedMetrics.list <- sapply(files.locs, read_feather, simplify = FALSE)  
+# exclude the path and only extract the data frame names, e.g. "mmcAllgeneAlldcr"
+names(calculatedMetrics.list) <- str_sub(names(calculatedMetrics.list), nchar("../calculatedMetrics/")+1, -9)   
+
+
+# divide mte of 25 dc/r combo by mte of the mRNAconstant = rmte, relative mean translation efficiency
+# X1 = mRNA constant, X2:X25 = mRNAvarying
+# dim(rmteAllgeneAlldcr) = 4839 X 25
+calculatedMetrics.list$rmpsrAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mpsrAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$rmvpsAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mvpsAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$rcvpsAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$cvpsAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]}))) #x[1] is for mRNAconstant
+calculatedMetrics.list$rmteAllgeneAlldcr <-  as_tibble(t(apply(calculatedMetrics.list$mteAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]}))) #x[1] is for mRNAconstant
+calculatedMetrics.list$rmvteAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mvteAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$cvmcAllgeneAlldcr <- sqrt(calculatedMetrics.list$mvmcAllgeneAlldcr)/calculatedMetrics.list$mmcAllgeneAlldcr  # mRNA count coefficient of variation
+calculatedMetrics.list$rmmcAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mmcAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$rmmdrAllgeneAlldcr <- as_tibble(do.call(rbind, lapply(1:4839, function(geneID){calculatedMetrics.list$mmdrAllgeneAlldcr[geneID, ]/simInputFeatures$mRNADecRateNeymotin_sec[geneID]})))  # for X1 this will be 0,  for the ~30 genes whose GreshamDecRate = 0 this will be NaN b/c 0/0 = NaN
+calculatedMetrics.list$rmttAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mttAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$rmvttAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mvttAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]})))
+calculatedMetrics.list$mhlAllgeneAlldcr <- as_tibble(log(2)/calculatedMetrics.list$mmdrAllgeneAlldcr) # mean half life
+calculatedMetrics.list$mmdpAllgeneAlldcr <- as_tibble(calculatedMetrics.list$mmmdAllgeneAlldcr/calculatedMetrics.list$mmcAllgeneAlldcr)
+calculatedMetrics.list$mrdAllgeneAlldcr <- as_tibble(calculatedMetrics.list$mmbrAllgeneAlldcr/simInputFeatures$geneLength_codon) #ribosome density=number of ribosomes N divided by the CDS length L
+calculatedMetrics.list$rmrdAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mrdAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]}))) #x[1] is for mRNAconstant
+calculatedMetrics.list$rmtbrAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mtbrAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]}))) #x[1] is for mRNAconstant
+calculatedMetrics.list$rmvtbrAllgeneAlldcr <- as_tibble(t(apply(calculatedMetrics.list$mvtbrAllgeneAlldcr, 1, function(x){x[1:nrow(dc.r.df)]/x[1]}))) #x[1] is for mRNAconstant
+
+# convert all the calculatedMetrics.list dataframes to long format
+calculatedMetricsLong.list <- lapply(1:length(calculatedMetrics.list), df.convert.fun)
+
+mcpsrAlldcr <- read_feather("../calculatedMetrics/mcpsrAlldcr.feather")
+
+# Join all the dataframes in calculatedMetrics.list
+allSimInputOutput <- 
+    calculatedMetricsLong.list %>%
+        purrr::reduce(left_join, by = c("paraID" = "paraID", "ORF" = "ORF")) %>%
+        left_join(., mcpsrAlldcr, "paraID") %>%
+        left_join(., rmfr_df, by = "paraID") %>%
+        left_join(., dc.r.df, "paraID") %>%
+        left_join(., simInputFeatures, by = "ORF")
+
+write_feather(allSimInputOutput, path = "../allSimInputOutput.feather")
+
+```
+
+```{r}
+cpsrAlldcr
+mcpsrAlldcr
+```
+
+
+```{r}
+
+allSimInputOutput %>%
+    filter(ORF == "YBR208C")
+
+allSimInputOutput %>%
+    filter(ORF == "YJR109C")
+
+allSimInputOutput %>%
+    filter(ORF == "YAL001C")
+
+allSimInputOutput %>%
+    filter(ORF == "YAL034W-A")
+```

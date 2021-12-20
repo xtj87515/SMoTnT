@@ -1,0 +1,194 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../figures/"
+```
+
+```{r}
+# translation efficiency = protein produced per mRNA per minute = protein produced per min/real-time mRNA count per min
+TE_byTimeRep <- function(gName1, gName2, gName3)
+{
+    TE_ls <-lapply(c(gName1, gName2, gName3), function(x){
+        te_varying <- data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/dc_1_r_0"))/h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/dc_1_r_0"))))
+        te_constant <- data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/mRNAconstant"))/h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/mRNAconstant"))))
+        return(tibble(rbind(te_varying, te_constant)))
+    })
+    #each tibble is 1440 X 50 reps, 1440 = 720min for each of dc_1_r_0 or ctrl
+    
+    teRepTime <- do.call(rbind, TE_ls)    # 4320 X 50, 4320=1440x3=(720x2)x3
+  
+    colnames(teRepTime) <- paste0("rep", 1:numTechReps)
+    
+    p1 <- teRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3), 
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3), 
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2))) %>%
+      pivot_longer(names_to = "reps", values_to = "transEffi", cols = 1:numTechReps) %>%
+      ggplot(aes(x=time, y= transEffi, color=dc.r.paraCombo)) + 
+      geom_line(alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "top",
+            legend.justification = "left",
+            strip.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+            ) +
+      labs(
+           x="Time(min)",
+           y='Translation efficiency'~(mRNA^-1 ~min^-1)) +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100% RiboProtect 0"),  values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0), name="Protein synthesized per mRNA")  # remove the extra space on the axis
+
+    
+    p2 <- teRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3), 
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3), 
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2))) %>%
+      pivot_longer(names_to = "reps", values_to = "transEffi", cols = 1:numTechReps) %>%
+      ggplot(aes(x=transEffi, fill=dc.r.paraCombo, color = dc.r.paraCombo)) +
+      geom_density(alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "none",
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            strip.text = element_text( color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            strip.background = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+    ) +
+      labs(x="") +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100% RiboProtect 0"),  values = c("#1F78B4", "#FF7F00")) +
+      scale_fill_manual(values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0)) +
+      coord_flip()
+
+
+    p1 + p2 + plot_layout(ncol = 2, width = c(4, 0.6))
+}
+```
+
+
+```{r}
+figure2c <- allSimInputOutput %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0") %>%
+  select(paraCombo, MTE, ORF) %>%
+  spread(paraCombo, MTE) %>%
+  ggplot(aes(x=mRNAconstant, y=dc_1_r_0)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(size = rel(1), color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Mean TE for mRNA constant'~(min^-1),
+           y = 'Mean TE for mRNA varying'~(min^-1))+
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.25, label.y.npc = 0.5, size=5) +
+      scale_x_log10() +
+      scale_y_log10() +
+      scale_color_manual(values = c("dc_1_r_0" = "#00BFC4"))
+
+figure2d <- allSimInputOutput %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0") %>%
+  select(paraCombo, MVTE, ORF, mRNAabundance) %>%
+  mutate(clr = ifelse(mRNAabundance>1, "mRNALevel>1", "mRNALevel=1")) %>%
+  spread(key = paraCombo, value = MVTE) %>%
+  ggplot(aes(x=mRNAconstant, y=dc_1_r_0, color=clr)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = c(0.7, 0.3),
+            legend.title = element_blank(),
+            strip.text = element_text(size = rel(1), color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank(),
+            legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid') #gives legend a box around it
+    ) +
+      labs(x = 'Variance in TE for mRNA constant',
+           y = 'Variance in TE for mRNA varying')+
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.1, label.y.npc = 0.5, size=5) +
+      scale_x_log10() +
+      scale_y_log10() +
+      scale_color_manual(values = c("mRNALevel>1" = "black","mRNALevel=1" = "dark grey"))
+
+figure2e <- allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0) %>%
+  ggplot(aes(x=RMTE, y=RMVTE, color = paraCombo)) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x ="Rel. mean of translation efficiency \n(exclud. mRNAabundance=1 and internal ctrl)",
+           y = "Rel. variance of translation efficiency \n") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.2, label.y.npc = 0.3, size=5) +
+      scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
+      scale_y_log10() +
+      scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("black"))
+
+figure2f <- allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0) %>%
+  select(ORF, RMTE, RMVTE) %>% #remove the gene with the 450min HL
+  pivot_longer(!ORF, names_to = "meanORvar", values_to = "val") %>%
+  ggplot() +
+  geom_density(aes(x=val, linetype=meanORvar)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+        legend.position = c(0.6, 0.6),
+        axis.title.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        plot.margin = margin(r = 0, unit = "pt"),
+        panel.grid = element_blank()) +
+    scale_color_manual(values = c("RMTE"="black", "RMVTE"="black")) +  
+    scale_linetype_manual(name = "", labels=c("RMTE"="Rel. mean of trans. effis",
+                                              "RMVTE"="Rel. variance of trans. effi."),
+                          values = c("RMTE"=1, "RMVTE"=3)) + 
+    scale_x_log10()
+
+```
+
+
+```{r fig.height = 10, fig.width=15}
+figure2a <- TE_byTimeRep("YOR369C", "YHR064C", "YKL182W")  
+
+figure2 <- figure2a | ((figure2c + figure2d)/(figure2e + figure2f))
+figure2 + plot_annotation(
+  title = "Figure 2",
+  tag_levels = 'A')
+
+ggsave(paste0(figureBaseFolder, "b_fig_2.png"), dpi=200, height = 10, width = 15)
+
+```

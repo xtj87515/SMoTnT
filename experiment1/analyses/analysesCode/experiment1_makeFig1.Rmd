@@ -1,0 +1,206 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../figures/"
+```
+
+```{r}
+# protein synthesized per minute
+PS_byTimeRep <- function(gName1, gName2, gName3)
+{
+    protSynRate_ls <- lapply(c(gName1, gName2, gName3), function(x){
+      tibble(rbind(data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/dc_1_r_0")))), data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/mRNAconstant"))))))})
+    #each tibble is 1440 X 50 reps, 1440 = 720min for each of dc_1_r_0 or ctrl
+    
+    coeff <- lapply(c(gName1, gName2, gName3), function(x){((allSimInputOutput%>%filter(ORF==x, paraCombo=="dc_1_r_0"))$MPSR)/((allSimInputOutput%>%filter(ORF==x, paraCombo=="dc_1_r_0"))$mRNAabundance)}) # coeff in order to transform the sec_axis
+    
+    # The protein synthesis rates are transformed, in order to transform the sec_axis below without a problem (too complicated to explain here)..The main obstacle is that by using facet_wrap, it is impossible to customize the second y axis for each facet, without transforming the values beforehand like below.
+    protSynRate_ls[[1]] <- protSynRate_ls[[1]]*coeff[[2]]*coeff[[3]]
+    protSynRate_ls[[2]] <- protSynRate_ls[[2]]*coeff[[1]]*coeff[[3]]
+    protSynRate_ls[[3]] <- protSynRate_ls[[3]]*coeff[[1]]*coeff[[2]]
+    
+    protSynRepTime <- do.call(rbind, protSynRate_ls)    # 4320 X 50, 4320=1440x3
+  
+    colnames(protSynRepTime) <- paste0("rep", 1:numTechReps)
+    
+    
+    mRNAabundRealTime <- lapply(c(gName1, gName2, gName3), function(x){c((h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/dc_1_r_0")))[1, ],  rep(simInputFeatures$mRNAabundance[which(simInputFeatures$ORF==x)], simTimeMin))})
+    mRNAabundRealTime <- do.call(c, mRNAabundRealTime)
+    
+    p1 <- protSynRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3), 
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3), 
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2)), 
+             mRNArealTime = mRNAabundRealTime) %>%
+      pivot_longer(names_to = "reps",values_to = "PS", cols = 1:numTechReps) %>%
+      ggplot(aes(x=time,  color=dc.r.paraCombo)) +
+      geom_line(aes(y = mRNArealTime)) +
+      geom_line(aes(y = PS/(coeff[[1]]*coeff[[2]]*coeff[[3]])), alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "top",
+            legend.justification = "left",
+            strip.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+            ) +
+      labs(x="Time(min)",
+           y="Protein synthesized within a minute") +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100%"), values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0), name="Real-time mRNA abundance (single replicate)", sec.axis = sec_axis(~.*(coeff[[1]]*coeff[[2]]*coeff[[3]]), name = "Protein synthesized per minute"))  # remove the extra space on the axis
+
+    
+    p2 <- protSynRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3),
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3),
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2))) %>%
+      pivot_longer(names_to = "reps", values_to = "PS", cols = 1:numTechReps) %>%
+      ggplot(aes(x=PS, fill=dc.r.paraCombo, color = dc.r.paraCombo)) +
+      geom_density(alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "none",
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            strip.background = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+    ) +
+      labs(x="") +
+      scale_fill_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100%"), values = c("#1F78B4", "#FF7F00")) +
+      scale_color_manual(values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0)) +
+      coord_flip()
+
+
+    p1 + p2 + plot_layout(ncol = 2, width = c(4, 0.6))
+}
+
+```
+
+```{r}
+# These three genes each has their mRNAconstant <, =, > mRNAvarying    mRNAabundance high
+figure1a <- PS_byTimeRep("YOR369C", "YHR064C", "YKL182W") 
+
+figure1c <- allSimInputOutput %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+  ggplot(aes(x=MPSR, y=MVPS, color = paraCombo)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Mean of protein synthesis rate'~(min^-1),
+           y = 'Variance of protein synthesis rate'~(min^-1)) +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100% RiboProtect 0"), values = c("#1F78B4", "#FF7F00")) +
+      geom_smooth(method="lm") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+      scale_x_log10() +
+      scale_y_log10()
+
+#################################################################
+figure1d <- allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+  ggplot(aes(x=RMPSR, y=RMVPS, color = paraCombo)) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x ="Rel. mean of protein synthesis rate",
+           y = "Rel. variance of protein synthesis rate") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.2, label.y.npc = 0.5, size=5) +
+      scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
+      scale_y_log10() +
+      scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("black"))
+
+#################################################################
+figure1e <- (allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A"))[, c("ORF", "RMPSR", "RMVPS")] %>% #remove the gene with the 450min HL
+  pivot_longer(!ORF, names_to = "meanORvar", values_to = "val") %>%
+  ggplot() +
+  geom_density(aes(x=val, linetype=meanORvar)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+        legend.position = c(0.6, 0.6),
+        legend.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        plot.margin = margin(r = 0, unit = "pt"),
+        panel.grid = element_blank()) +
+    scale_color_manual(values = c("RMPSR"="black", "RMVPS"="black")) +  
+    scale_linetype_manual(name = "", labels=c("RMPSR"="Rel. mean of prot.syn.rates",
+                                              "RMVPS"="Rel. variance of prot.syn.rates"),
+                          values = c("RMPSR"=1, "RMVPS"=3)) + 
+    scale_x_log10()
+#################################################################
+figure1f <-(allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0))[, c("ORF", "CVPS", "CVMC", "paraCombo")] %>% #remove the gene with the 450min HL
+  ggplot(aes(x=CVMC, y=CVPS, colour=paraCombo)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x ="CV for mRNA count per min",
+           y = "CV for protein synthesis rate") +
+      #scale_color_discrete(name="",labels=c("Co-trans 100% RiboProtect 0")) +
+      geom_smooth(method="lm") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.5, label.y.npc = 0.3, size=5) +
+      scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
+      scale_y_log10() +
+      scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("dc_1_r_0" = "black"))  
+```
+
+
+Relative mean of protein synthesis rate = for each gene, the ratio between mean of protein synthesis rate for dc_1_r_0 and mRNAconstant (mean among 720min X 50rep numbers).
+Relative variance of protein synthesis rate = for each gene, the ratio between variance of protein synthesis rate for dc_1_r_0 and mRNAconstant (variance among 720min X 50rep numbers).
+```{r fig.height = 10, fig.width=15}
+################################################################ Fig. 1
+figure1 <- figure1a | ((figure1c + figure1d)/(figure1e + figure1f))
+figure1 + plot_annotation(
+  title = "Figure 1",
+  tag_levels = 'A')
+
+ggsave(paste0(figureBaseFolder,"a_fig_1.png"), dpi=200, height = 10, width = 15)
+
+
+```
+
