@@ -4,7 +4,7 @@ output: html_notebook
 ---
 
 Load libraries and public variables
-```{r, include=FALSE} 
+```{r, include = FALSE} 
 # This chunk will be evaluated but the output is suppressed
 rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
 ```
@@ -21,11 +21,11 @@ h5createFile(simOutputH5)
 fileHandle <- H5Fopen(simOutputH5)
 
 # Create 1st + 2nd level groups for dtype1/2.
-# dtype1 and 2 are combined here b/c their 1st/2nd dirs are same. But in the next chunk, when creating datasets, their dimensions are different, so the datasets need to be created and written in separately
-i=1
+# dtype1 and 2 are combined here b/c their 1st/2nd directories are the same. But in the next chunk, when creating data sets, their dimensions are different, so the data sets need to be created and written in separately
+i = 1
 for(gene in geneNames){ 
-    # Keepping track of the progress, i max = geneNumbers
-    if(i%%1000==0){
+    # Keepping track of the progress
+    if(i%%1000 == 0){
         print(i)
     }
   
@@ -33,11 +33,11 @@ for(gene in geneNames){
     h5createGroup(fileHandle, gene)  
     
     # 2nd level dir: data types out of dtype1 and dtype2
-    dtpList <- paste(gene, c(dtype1, dtype2), sep="/")
-        for(dtp in dtpList){          
+    dtpList <- paste(gene, c(dtype1, dtype2), sep = "/")
+    for(dtp in dtpList){          
         h5createGroup(fileHandle, dtp)
     }
-    i=i+1
+    i = i+1
 }
 
 # Create 1st and 2nd level groups for dtype3
@@ -50,7 +50,7 @@ for(dtp in dtype3)
     else{
         # 1st level dir: dtype3
         h5createGroup(fileHandle, dtp)  
-        dc.r.List <- paste(dtp, dc.r.df$paraCombo, sep="/")   
+        dc.r.List <- paste(dtp, dc.r.df$paraCombo, sep = "/")   
           
         # 2nd level dir: dc/r combo or mRNAconstant
         for(dc.r in dc.r.List){ 
@@ -58,8 +58,6 @@ for(dtp in dtype3)
         }
     }
 }
-
-
 
 h5closeAll()
 
@@ -99,7 +97,7 @@ fileHandle <- H5Fopen(simOutputH5)
 # 1st: 4839 genes
 for(i in 1:geneNumbers){ 
     # keeping track of the progress
-    if(i%%500==0){
+    if(i%%500 == 0){
         print(paste("dtype1", i, Sys.time()))
     } 
   
@@ -107,13 +105,13 @@ for(i in 1:geneNumbers){
     for(dtp in dtype1){
         # 3rd: dc/r combo or mRNAconstant
         for (dc.r in dc.r.df$paraCombo){
-            groupname <- paste(geneNames[i], dtp, dc.r, sep="/")
+            groupname <- paste(geneNames[i], dtp, dc.r, sep = "/")
             h5createDataset(file = fileHandle,
                             dataset = groupname,
                             dims = c(numTechReps, simTimeMin), 
                             storage.mode = "double",
                             chunk = c(numTechReps, simTimeMin),
-                            level = 6) # intermediate level=6 for the balance between compression size and speed
+                            level = 6) # intermediate level = 6 for the balance between compression size and speed
         }
     }
 }
@@ -122,21 +120,22 @@ for(i in 1:geneNumbers){
 # dtype2: 1st/2nd/3rd directory are the same as dtype1
 # dtype2 <- c("gene_initimes",          # 4th:50 rep X 3 (#events, mean, var), Average time between initiation of all genes
 #             "gene_totetimes",         # 4th:50 rep X 3 (#events, mean, var), Average total elongation times of all genes
-#             "mRNA_lifeTimes")         # 4th:50 X 100 (=5000 life time data point, some spots will be filled with NAs since not all genes would have 5000 life times collected). 
+#             "mRNA_lifeTimes")         # 4th:50 X 100 ( = 5000 life time data point, some spots will be filled with NAs since not all genes would have 5000 life times collected). 
 
 # 1st: 4839 genes
 for(i in 1:geneNumbers){
     # keeping track of the progress
-    if(i%%500==0){
+    if(i%%500 == 0){
         print(paste("dtype2", i, Sys.time()))
     }
     
     # 2nd: datatype out of dtype2
     for(dtp in dtype2){
-        ncoldtype2 <- ifelse(dtp=="mRNA_lifeTimes", 100, 3)
+        # the ncol for the different dtype2 are different
+        ncoldtype2 <- ifelse(dtp == "mRNA_lifeTimes", 100, 3)
         # 3rd: dc/r combo or mRNAconstant
         for (dc.r in dc.r.df$paraCombo){
-            groupname <- paste(geneNames[i], dtp, dc.r, sep="/")  
+            groupname <- paste(geneNames[i], dtp, dc.r, sep = "/")  
             h5createDataset(file = fileHandle,
                             dataset = groupname,
                             dims = c(numTechReps, ncoldtype2), 
@@ -155,7 +154,7 @@ for(i in 1:geneNumbers){
 #             "avg_ribo_tRNA")            # 3rd: 50rep X 42(41ribo, 1tRNA), Average number of free ribosomes and tRNAs at equilibrium
              
 ncoldtype3 <- c(2, 720, 720, 42)  # ncol for each of dtype3
-i=1 # iterate through the four numbers in ncoldtype3
+i = 1 # iterate through the four numbers in ncoldtype3
 # 1st: dtype
 for(dtp in dtype3){ 
     # keep track of the progress
@@ -163,49 +162,49 @@ for(dtp in dtype3){
   
     # 2nd:dc/r combo or mRNAconstant
     for(dc.r in dc.r.df$paraCombo){
-        if(dtp=="etimes" || dtp=="codon_sp_elngRibo_perMin"){
+        if(dtp == "etimes" || dtp == "codon_sp_elngRibo_perMin"){
             # j for 61 codon id, corresponding to the cid in [0,60] in the source program
             for(j in 0:60){
-                groupname <- paste(dtp, dc.r, paste0("cid", j), sep="/")
+                groupname <- paste(dtp, dc.r, paste0("cid", j), sep = "/")
                 h5createDataset(file = fileHandle,
                                 dataset = groupname,
-                                dims = c(numTechReps, ncoldtype3[which(dtype3==dtp)]), 
+                                dims = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]), 
                                 storage.mode = "double",
-                                chunk = c(numTechReps, ncoldtype3[which(dtype3==dtp)]),
+                                chunk = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]),
                                 level = 6)
             }
         }
-        else if(dtp=="free_ribo_tRNA_perMin"){
-            groupname <- paste(dtp, dc.r, "ribo", sep="/")
+        else if(dtp == "free_ribo_tRNA_perMin"){
+            groupname <- paste(dtp, dc.r, "ribo", sep = "/")
             h5createDataset(file = fileHandle,
                 dataset = groupname,
-                dims = c(numTechReps, ncoldtype3[which(dtype3==dtp)]), 
+                dims = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]), 
                 storage.mode = "double",
-                chunk = c(numTechReps, ncoldtype3[which(dtype3==dtp)]),
+                chunk = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]),
                 level = 6)
                 
             # j for 41 tRNA id, corresponding to the tid in [0,40] in the source program
             for(j in 0:40){
-                groupname <- paste(dtp, dc.r, paste0("tid", j), sep="/")
+                groupname <- paste(dtp, dc.r, paste0("tid", j), sep = "/")
                 h5createDataset(file = fileHandle,
                     dataset = groupname,
-                    dims = c(numTechReps, ncoldtype3[which(dtype3==dtp)]), 
+                    dims = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]), 
                     storage.mode = "double",
-                    chunk = c(numTechReps, ncoldtype3[which(dtype3==dtp)]),
+                    chunk = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]),
                     level = 6)
             }
         }
         else{   #"avg_ribo_tRNA"
-            groupname <- paste(dtp, dc.r, sep="/")
+            groupname <- paste(dtp, dc.r, sep = "/")
             h5createDataset(file = fileHandle,
                             dataset = groupname,
-                            dims = c(numTechReps, ncoldtype3[which(dtype3==dtp)]),
+                            dims = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]),
                             storage.mode = "double",
-                            chunk = c(numTechReps, ncoldtype3[which(dtype3==dtp)]),
+                            chunk = c(numTechReps, ncoldtype3[which(dtype3 == dtp)]),
                             level = 6)
         }
     }
-    i=i+1
+    i = i+1
 }
 
 h5closeAll()
@@ -238,21 +237,20 @@ print(Sys.time())
 ```
 
 
-### Step 3: Prep for writing data for dtype1/2 (took ~1min to run), this step should be ran after all output files are ready stored on the server, the filenames will be stored in each fileGroup.
+### Step 3: Prep for writing data for dtype1/2 (took ~1min to run), this step should be ran after all output files are ready stored on the server, the filenames will then be stored in each fileGroup.
 ```{r}
 createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #numberOfDataType = 9/3/4 for dtype1/2/3
     numGroups <- numberOfDataType * length(dcrDataframe$paraCombo)   
-    # e.g. numGroups: for dtype1=9*25=225, dtype2=3*25=75, dtype3=4*25=100
+    # e.g. numGroups: for dtype1 = 9*25 = 225, dtype2 = 3*25 = 75, dtype3 = 4*25 = 100
     
     # fileGroupIndex contains the indices of combinations between data type and dc.r.combo. 
     fileGroupIndex <- tibble(data.frame(dataType = integer(numGroups), 
-                                 dc.r.combo = integer(numGroups)))
+                                        dc.r.combo = integer(numGroups)))
     groupid = 1
-    for(i in 1:numberOfDataType){ #-------- 9 data types included in both dtype1 e.g. meanElngTime, etc
-        for(j in 1:length(dcrDataframe$paraCombo)){ #-----------------  dc/r combo + 1 mRNAconstant
+    for(i in 1:numberOfDataType){                         # 9 data types included in dtype1
+        for(j in 1:length(dcrDataframe$paraCombo)){       # dc/r combo + 1 mRNAconstant
             if(groupid <=numGroups){
-                fileGroupIndex[groupid, ] <- as.list(c(i, j)) 
-                # as.list() otherwise gets error message "Row updates require a list value"
+                fileGroupIndex[groupid, ] <- as.list(c(i, j)) # as.list() otherwise gets error message "Row updates require a list value"
                 groupid <- groupid+1
             }
         }
@@ -263,9 +261,9 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
     for(groupID in 1:numGroups){
         dtp <- as.character(datatype[unlist(fileGroupIndex[groupID, 1])])  #e.g. "gene_sp_countElng_perMin"
         dc.r <- (dcrDataframe$paraCombo)[unlist(fileGroupIndex[groupID, 2])] # e.g. "dc_0_r_1"
-        outfolder <- paste(rawSimOutFolder, dtp, sep="/")
+        outfolder <- paste(rawSimOutFolder, dtp, sep = "/")
         
-        if(dc.r=="mRNAconstant"){
+        if(dc.r == "mRNAconstant"){
             fileGroupVec <- paste0(dtp, "/", list.files(outfolder, pattern = glob2rx(paste0("*", "mRNAconstant", "*", dtp, "*"))))
         }else{
             # fileGroupVec contains 2 individual info + N files that has same data type and dc/r combo but N different seeds. Adding "_allGenesDe" to prevent from including the allGenesCtrl files when dc.r="dc_0.2_r_0.1"
@@ -276,26 +274,23 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
         fileGroup[, ] <- as.list(fileGroupVec)
         
         # keep track of the progress
-        if(groupID%%50==0){  
+        if(groupID%%50 == 0){  
             print(groupID)
         }
     }
-    
-    
-    save(fileGroup, fileGroupIndex, file=paste0("../fileGroup_", deparse(substitute(datatype)), ".rdata"))
+    save(fileGroup, fileGroupIndex, file = paste0("../fileGroup_", deparse(substitute(datatype)), ".rdata"))
     
 }
 
 createFileGroups(length(dtype1), dtype1, dc.r.df)
 createFileGroups(length(dtype2), dtype2, dc.r.df)
 createFileGroups(length(dtype3), dtype3, dc.r.df)
-
 ```
 
 ### Step 4: Functions to write data from raw output into h5
 ```{r}
 ####################################################################### dtype1
-# let N output files(for N # of seeds/simulation technical replicates) be a group, then there are a total of length(dtype1) * length(dc.r.df$paraCombo) = 9*25=225 groups for dtype1
+# let N output files(for N # of seeds/simulation technical replicates) be a group, then there are a total of length(dtype1) * length(dc.r.df$paraCombo) = 9*25 = 225 groups for dtype1
 # each of these N files (i.e. each groupId) have the same dataType + dc/r combo or mRNAconstant
 write_h5_dtype1 <- function(groupID, fileGroup){            # input = groupID 1:225
     dtp <- as.character(unlist(fileGroup[groupID, 1]))      # e.g. "gene_sp_varianceBoundRibo_perMin"
@@ -305,13 +300,13 @@ write_h5_dtype1 <- function(groupID, fileGroup){            # input = groupID 1:
     currentNlist <- list()  
     for(ii in 1:numTechReps){
         # large size list. e.g. 159Mb for 10 seeds
-        # dim(currentNlist[[1]]) = 720 4840, 4840 = time mark + 4839 genes
+        # dim(currentNlist[[1]]) = 720 4840, 4840 = time mark(1st min, 2nd min etc) + 4839 genes
         # read_delim always returns an extra column???
-        currentNlist[[ii]] = read.table(file=paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2])))) 
+        currentNlist[[ii]] = read.table(file = paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2])))) 
     }
     
     # Step 2: read from each col of each file (one element of the list) into each row of dataNseedsH5
-    for(i in 2:(geneNumbers+1)){  # 2:4840, 1st col=simulation time in seconds, rest col = 4839 genes, total col=time mark + 4839 genes = 4840
+    for(i in 2:(geneNumbers+1)){  # 2:4840, 1st col = simulation time in seconds, rest col = 4839 genes, total col = time mark + 4839 genes = 4840
         # dataNseedsH5 contains the data of all N seeds for a given gene(1 of 4839)
         dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = simTimeMin)
         
@@ -319,15 +314,15 @@ write_h5_dtype1 <- function(groupID, fileGroup){            # input = groupID 1:
           dataNseedsH5[j, ] <- currentNlist[[j]][, i]
         }
         
-        groupname <- paste(geneNames[i-1], dtp, dc.r, sep="/")
-        h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+        groupname <- paste(geneNames[i-1], dtp, dc.r, sep = "/")
+        h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
       
     }
     print(paste("dtype1", groupID, Sys.time()))
 }  
 
 ####################################################################### dtype2
-write_h5_dtype2 <- function(groupID, fileGroup){            # input = groupID 1:75, 3*25=75
+write_h5_dtype2 <- function(groupID, fileGroup){            # input = groupID 1:75, 3*25 = 75
     dtp <- as.character(unlist(fileGroup[groupID, 1]))
     dc.r <- as.character(unlist(fileGroup[groupID, 2]))
     
@@ -337,47 +332,46 @@ write_h5_dtype2 <- function(groupID, fileGroup){            # input = groupID 1:
         for(ii in 1:numTechReps){
             # large size list. e.g. 1.1Mb
             # dim(currentNlist[[1]]) = 4840 4or6 
-            currentNlist[[ii]] <- read.table(file=paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))),  header=T)
+            currentNlist[[ii]] <- read.table(file = paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))),  header = T)
         }
       
-        # Step 2: read from each col of each file(one element of the list) into each row of dataNseedsH5
-        # raw output files in dtp2 (except for mRNA_lifeTimes) all have 4 columns: geneNumber, numberOfEvents, mean, variance. Below is to set the start and end col as 2 and 4, excluding 1st the geneNumber column.
+        # Step 2: read from each col of each file (one element of the list) into each row of dataNseedsH5
+        # raw output files in dtp2 (except for mRNA_lifeTimes) all have 4 columns: geneNumber, numberOfEvents, mean, variance. Below is to set the start and end col as 2 and 4, excluding 1st the geneNumber column in the original raw output files.
         startcol_dtp2 <- 2
         endcol_dtp2 <- 4
         ncol_dtp2 <- 3 
-        for(i in 1:geneNumbers){  # indexes for all genes, each row is a gene in raw output file
+        for(i in 1:geneNumbers){  # indices for all genes, each row is a gene in raw output file
             # dataNseedsH5 contains the data of all N seeds for a given gene(1 of 4839)
             dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncol_dtp2)
 
-            for(j in 1:numTechReps){  # indexes for data of n seeds from n files
+            for(j in 1:numTechReps){  # indices for data of n seeds from n files
                 dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][i, startcol_dtp2:endcol_dtp2])
             }
             
-            groupname <- paste(geneNames[i], dtp, dc.r, sep="/")
-            h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
-            
+            groupname <- paste(geneNames[i], dtp, dc.r, sep = "/")
+            h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
         }
     }
     
-    else if(dtp=="mRNA_lifeTimes"){
+    else if(dtp == "mRNA_lifeTimes"){
         # Step 1: read all the file contents for these N files into a list
         currentNlist <- list()  
         for(ii in 1:numTechReps){
             # large size list. e.g. 20Mb*100~2Gb
             # using readLines() instead of read.table() because each line of the raw output contains different number of items (because different genes has recorded different number of lifetimes)
-            currentNlist[[ii]] <- readLines(con=paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))))  
+            currentNlist[[ii]] <- readLines(con = paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))))  
         }
         
-        # Step 2: read from each line of each file(one element of the list), sample 5,000 numbers for each gene, then write into dataNseedsH5
-        for(i in 1:geneNumbers){  # indexes for all genes, each row is a gene in original file
+        # Step 2: read from each line of each file (one element of the list), sample 5,000 numbers for each gene, then write into dataNseedsH5
+        for(i in 1:geneNumbers){  # indices for all genes, each row is a gene in original file
             lifeTimeVec = c()
-            for(j in 1:numTechReps){  # indexes for data of n seeds from n files
-                 fcontent <- as.numeric(unlist(strsplit(currentNlist[[j]][i], " ")))
-                 # in raw output file, 1st number=gid, 2nd number= number of lifeTimes, from 3rd on are the life times.
-                 lifeTimeVec <- c(lifeTimeVec, fcontent[3:(fcontent[2]+2)])
+            for(j in 1:numTechReps){  # indices for data of n seeds from n files
+                 fileContent <- as.numeric(unlist(strsplit(currentNlist[[j]][i], " ")))
+                 # in raw output file, 1st number = gid, 2nd number = number of lifeTimes, from 3rd on are the life times.
+                 lifeTimeVec <- c(lifeTimeVec, fileContent[3:(fileContent[2]+2)])
             }
             
-            # If the lifeTimeVec length is smaller than numTechReps*100=50*100=5000, then supplement sampledLifeTimes with multiple NAs so it can fill up dataNseedsH5.
+            # If the lifeTimeVec length is smaller than numTechReps*100 = 50*100 = 5000, then supplement sampledLifeTimes with multiple NAs so it can fill up dataNseedsH5.
             if(length(lifeTimeVec)>numTechReps*100){
                 sampledLifeTimes <- sample(lifeTimeVec, numTechReps*100)
             }else{
@@ -386,15 +380,15 @@ write_h5_dtype2 <- function(groupID, fileGroup){            # input = groupID 1:
           
             # dataNseedsH5 contains the data of all N seeds for a given gene(1 of 4839)
             dataNseedsH5 <- matrix(sampledLifeTimes, nrow = numTechReps,  ncol = 100)
-            groupname <- paste(geneNames[i], dtp, dc.r, sep="/")
-            h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+            groupname <- paste(geneNames[i], dtp, dc.r, sep = "/")
+            h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
         }
     }
     print(paste("dtype2", groupID, Sys.time()))
 }  
 
 ####################################################################### dtype3
-write_h5_dtype3 <- function(groupID, fileGroup){  # input = groupID 1:100, 4*25=100
+write_h5_dtype3 <- function(groupID, fileGroup){  # input = groupID 1:100, 4*25 = 100
     ncoldtype3 <- c(2, 720, 720, 42)  # ncol for each of dtype3. Refer to "../../publicVariables/createPublicVariables.Rmd" for the specifications
     dtp <- as.character(unlist(fileGroup[groupID, 1]))
     dc.r <- as.character(unlist(fileGroup[groupID, 2]))
@@ -404,65 +398,65 @@ write_h5_dtype3 <- function(groupID, fileGroup){  # input = groupID 1:100, 4*25=
     for(ii in 1:numTechReps){
         # large size list. e.g. 1.1Mb
         # dim(currentNlist[[1]]) = 4840 4or6 
-        currentNlist[[ii]] <- read.table(file=paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))), header=ifelse(dtp=="etimes", TRUE, FALSE))   
+        currentNlist[[ii]] <- read.table(file = paste0(rawSimOutFolder, "/", as.character(unlist(fileGroup[groupID, ii+2]))), header = ifelse(dtp == "etimes", TRUE, FALSE))   
     }
   
     # Step 2: read from each col of each file(one element of the list) into each row of dataNseedsH5
-    if(dtp=="avg_ribo_tRNA"){
+    if(dtp == "avg_ribo_tRNA"){
         # dataNseedsH5 contains the data of all N seeds
-        dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3==dtp)])
+        dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3 == dtp)])
         for(j in 1:numTechReps){  # indexes for data of n seeds from n files
             dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][, 2])
         }
-        groupname <- paste(dtp, dc.r, sep="/")
-        h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+        groupname <- paste(dtp, dc.r, sep = "/")
+        h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
     }
     
-    else if(dtp=="codon_sp_elngRibo_perMin"){
+    else if(dtp == "codon_sp_elngRibo_perMin"){
         for(i in 0:60){
             # dataNseedsH5 contains the data of all N seeds
-            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3==dtp)])
+            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3 == dtp)])
             for(j in 1:numTechReps){  # indices for data of n seeds from n files
                 dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][, i+2])
             }
             
-            groupname <- paste(dtp, dc.r, paste0("cid", i), sep="/")
-            h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+            groupname <- paste(dtp, dc.r, paste0("cid", i), sep = "/")
+            h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
         }
     }
     
-    else if(dtp=="etimes"){
+    else if(dtp == "etimes"){
         for(i in 0:60){
             # dataNseedsH5 contains the data of all N seeds
-            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3==dtp)])
+            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3 == dtp)])
             for(j in 1:numTechReps){  # indexes for data of n seeds from n files
                 dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][i+1, 2:3])
             }
             
-            groupname <- paste(dtp, dc.r, paste0("cid", i), sep="/")
-            h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1,1))
+            groupname <- paste(dtp, dc.r, paste0("cid", i), sep = "/")
+            h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1,1))
         }
     }
 
     else{   #"free_ribo_tRNA_perMin"
         # dataNseedsH5 contains the data of all N seeds
-        dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3==dtp)])
+        dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3 == dtp)])
         for(j in 1:numTechReps){  # indexes for data of n seeds from n files
             dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][, 2])
         }
         
-        groupname <- paste(dtp, dc.r, "ribo", sep="/")
-        h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+        groupname <- paste(dtp, dc.r, "ribo", sep = "/")
+        h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
         
         for(i in 0:40){
             # dataNseedsH5 contains the data of all N seeds
-            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3==dtp)])
+            dataNseedsH5 <- matrix(NA, nrow = numTechReps, ncol = ncoldtype3[which(dtype3 == dtp)])
             for(j in 1:numTechReps){  # indexes for data of n seeds from n files
                 dataNseedsH5[j, ] <- as.numeric(currentNlist[[j]][, i+3])
             }
             
-            groupname <- paste(dtp, dc.r, paste0("tid", i), sep="/")
-            h5write(dataNseedsH5, fileHandle, name = groupname, start=c(1, 1))
+            groupname <- paste(dtp, dc.r, paste0("tid", i), sep = "/")
+            h5write(dataNseedsH5, fileHandle, name = groupname, start = c(1, 1))
         }
     }
     
@@ -470,7 +464,6 @@ write_h5_dtype3 <- function(groupID, fileGroup){  # input = groupID 1:100, 4*25=
 }  
 
 ```
-
 
 
 ### Step 5: Write data from raw output into h5 for dtype1

@@ -13,7 +13,6 @@ rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
 ```{r}
 # File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
 simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
-#allSimInputOutput <- read_tsv("../allSimInputOutput.feather")
 
 # This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
 rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
@@ -837,7 +836,6 @@ df.convert.fun <- function(x){
     inputdf %>%
         mutate(ORF = simInputFeatures$ORF) %>%
         gather_(key_col = "paraID", value_col = dfname, gather_cols = colnames(inputdf)[1:nrow(dc.r.df)])
-
 }
 
 # Read in the files that conatins "AllgeneAlldcr.feather", these files can be left_joined by "paraID" and "ORF"
@@ -885,11 +883,6 @@ allSimInputOutput <-
 
 write_feather(allSimInputOutput, path = "../allSimInputOutput.feather")
 
-```
-
-```{r}
-cpsrAlldcr
-mcpsrAlldcr
 ```
 
 

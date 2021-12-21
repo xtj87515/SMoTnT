@@ -5,7 +5,7 @@ output: html_notebook
 
 
 Load libraries and public variables
-```{r, include=FALSE} 
+```{r, include = FALSE} 
 # This chunk will be evaluated but the output is suppressed
 rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
 ```
@@ -15,10 +15,10 @@ The total number of jobs for experiment1 is 1250
 ```{r}
 set.seed(0)  
 # Seeds are required to feed each simulation. C program can set up to 32767 seeds.
-seedvec=sample(1:32767, 1250, replace=F)  
+seedvec <- sample(1:32767, 1250, replace = F)  
 
-# Max time to run the simulations are (12h*3600s=43200s)+1000s burn in=44200s. for most mRNAs their half lives are <35min =>simu time= 10/(log(2)/(35*60))=30296s, setting it to 44200s should therefore sufficiently allow the mRNAs to have enough turnover.
-maxTime=44200 
+# Max time to run the simulations are (12h*3600s = 43200s)+1000s burn in = 44200s. for most mRNAs their half lives are <35min =>simu time= 10/(log(2)/(35*60)) = 30296s, setting it to 44200s should therefore sufficiently allow the mRNAs to have enough turnover.
+maxTime <- 44200 
 
 # Repeating the dc.r.df the number of times = tech reps
 dc.r.rep <- tibble(dc = rep(dc.r.df$dc[2:25], numTechReps),  # 2:25 in order to exclude mRNAconstant
@@ -28,20 +28,20 @@ dc.r.rep <- tibble(dc = rep(dc.r.df$dc[2:25], numTechReps),  # 2:25 in order to 
 
 
 Write first line into the job file.
-This file should eventually contain 2 + 3*1250 = 3752 lines
+The job file should eventually contain 2 header lines + 3 line per job * 1250 jobs = 3752 lines
 ```{r}
 # File containing Amarel jobs
-jobFileAmr<-paste0("amarel_", experimentID, "_jobs.mf")  
+jobFileAmr <- paste0("amarel_", experimentID, "_jobs.mf")  
 # To empty the job file from old content, otherwise contents will add up
 system(paste0("cp /dev/null ", jobFileAmr))  
-# Setting parameters on Amarel
+# Lines for setting parameters on Amarel
 options <- paste0(" -N 1 -n 1 -c 1 --mem=7G -t 25:00:00 -o stdout/%A.out -e error/%A.err -J ", experimentID, "-")
 firstLine <- paste0("BATCH_OPTIONS = -p p_shahlab_1, genetics_1, main", options, "amr\n") 
 
-write(firstLine, file=jobFileAmr, append=T)
+write(firstLine, file = jobFileAmr, append = T)
 ```
 
-Writing 6x4x50 = 1200 mRNAvarying jobs into the job file
+Writing 6dc x 4r x 50 reps = 1200 mRNAvarying jobs into the job file
 ## (NOTE: THE RELATIVE PATHS BELOW ARE INCORRECT DURING THIS EDIT FOR EXPERIMENT1, NEEDS TO BE CORRECTED. Dec 1st, 2021)
 ```{r}
 for(i in 1:1200){
@@ -50,7 +50,7 @@ for(i in 1:1200){
                   "    ./../ac_amarelCode/wrapper.sh -Tt ", maxTime, " -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc ", dc.r.rep$dc[i], " -r ", dc.r.rep$r[i], " -F ../../publicInput/S.cer.genom -C ../../publicInput/S.cer.tRNA ", 
                   "-D ../input/allGenesDecrEqualsSynrWithScaling_", dc.r.rep$paraCombo[i], "_S.cer.mRNA.ini.abndc.syn.dec -s ", seedvec[i], 
                   " -O ../output/", outFileName, 
-                  " -p1 -p2 -p3 -p4 -p6 -p7\n"), file=jobFileAmr, append=T)
+                  " -p1 -p2 -p3 -p4 -p6 -p7\n"), file = jobFileAmr, append = T)
 }
 ```
 
@@ -62,7 +62,7 @@ for(i in 1201:1250){
                   "    ./../ac_amarelCode/wrapper.sh -Tt ",maxTime," -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc 0 -r 0 -F ../../publicInput/S.cer.genom -C ../../publicInput/S.cer.tRNA ",
                   "-D ../input/allGenes_mRNAconstant_S.cer.mRNA.ini.abndc.syn.dec -s ",seedvec[i],
                   " -O ../output/",outFileName,
-                  " -p1 -p2 -p3 -p4 -p6 -p7\n"),file=jobFileAmr,append=T)
+                  " -p1 -p2 -p3 -p4 -p6 -p7\n"),file = jobFileAmr,append = T)
 }
 ```
 

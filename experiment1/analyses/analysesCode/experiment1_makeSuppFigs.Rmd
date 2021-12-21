@@ -46,24 +46,13 @@ allSimInputOutput %>%
 
 
 ```{r fig.width=10}
-# In exp11, the parameters had different names, dc=old_r, r=old_w.
-# In exp11, the NMMC= RMMC in experiment1 (NMMC = normalized mean mRNA count, RMMC = relative mean mRNA count)
-exp11_mRNAcount <- read_feather("../externalData/exp11_outcomeAll.feather") %>%
-                   filter(para != "X1") %>%
-                   select(NMMC, combo, ORF) %>%
-                   `colnames<-`(c("NMMCexp11", "paraComboExp11", "ORF"))
-# First join these data frames that have different colnames
-tmpcombo <- tibble(paraComboExp11 = unique(exp11_mRNAcount$paraComboExp11),
-                   old_r=sapply(strsplit(unique(exp11_mRNAcount$paraComboExp11), "_"), "[", 2), 
-                   old_w=sapply(strsplit(unique(exp11_mRNAcount$paraComboExp11), "_"), "[", 4), 
-                   paraCombo=paste0("dc_", 1-as.numeric(old_r), "_r_", old_w))
-exp11_mRNAcount <- exp11_mRNAcount %>%
-                   left_join(., tmpcombo, by="paraComboExp11")
+trial_mRNAcount <- read_feather("../../simulations/trialmRNAcountData/trial_mRNAcount.feather")
+trial_mRNAcount
 
 figureS1 <- allSimInputOutput %>%
+    left_join(., trial_mRNAcount[,c("paraCombo","ORF","trialRMMC")], by = c("paraCombo"="paraCombo", "ORF"="ORF")) %>%
     filter(paraCombo != "mRNAconstant") %>%
-    left_join(., exp11_mRNAcount, by = c("paraCombo"="paraCombo", "ORF"="ORF")) %>%
-    select(paraCombo, RMMC, NMMCexp11, dc, r) %>%
+    select(paraCombo, RMMC, trialRMMC, dc, r) %>%
     `colnames<-`(c("paraCombo", "AfterScaling", "BeforeScaling", "dc", "r")) %>%
     pivot_longer(names_to = "key", values_to = "RMMCvalue", cols = 2:3) %>%
     ggplot(aes(x=RMMCvalue, color=key)) +
@@ -117,24 +106,23 @@ allSimInputOutput %>%
 Fig S2.
 ```{r}
 allSimInputOutput %>%
-  filter(paraCombo == "dc_1_r_0", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
-  ggplot(aes(x = MMC, y = MVMC, color = paraCombo)) +
-  geom_point(size = 0.5) +
-  geom_abline(linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 13),
-            legend.position = "none",
-            strip.text = element_text(color = "white"),  # can't use element_blank() here because it gives error when p1+p2
-            plot.margin = margin(r = 0, unit = "pt"),
-            panel.grid = element_blank()
-    ) +
-      labs(x = 'Mean of mRNA count',
-           y = 'Mean of variance in mRNA count') +
-      scale_color_manual(name =  "", labels =  c("dc_1_r_0" =  "Co-trans 100% RiboProtect 0"), values = c("#1F78B4")) +
-      geom_smooth(method =  "lm") +
-      stat_cor(aes(label =  paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size =  5) +
-      scale_x_log10() +
-      scale_y_log10()
+    filter(paraCombo == "dc_1_r_0", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = MMC, y = MVMC, color = paraCombo)) +
+    geom_point(size = 0.5) +
+    geom_abline(linetype = "dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              strip.text = element_text(color = "white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()) +
+          labs(x = 'Mean of mRNA count',
+               y = 'Mean of variance in mRNA count') +
+          scale_color_manual(name =  "", labels =  c("dc_1_r_0" =  "Co-trans 100% RiboProtect 0"), values = c("#1F78B4")) +
+          geom_smooth(method =  "lm") +
+          stat_cor(aes(label =  paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size =  5) +
+          scale_x_log10() +
+          scale_y_log10()
 ```
 
 
@@ -650,22 +638,22 @@ Supp Fig 2c: Output decay rates respond to scaled synthesis rates, therefore its
 
 Supp Fig 2d: Output decay rates for short genes are much less affected by different \nco-translational decay than long genes
 ```{r fig.height=6, fig.width=8}
-outcomeAll_exp11 <- read_feather(paste0(basefolder, expID, "/externalData/exp11_outcomeAll.feather"))
-tmp <- outcomeAll_exp11 %>% 
+allSimInputOutput_trial <- read_feather(paste0(basefolder, expID, "/externalData/trial_allSimInputOutput.feather"))
+tmp <- allSimInputOutput_trial %>% 
   filter(combo != "mRNAconstant", w != 0.01, w != 0.05, w != 0.2) %>% 
-  select(NMMC, combo, ORF, r, w) %>% # NMMC in exp11 = RMMC in exp0, "normalized" VS "relative"
+  select(NMMC, combo, ORF, r, w) %>% # NMMC in trial = RMMC in exp0, "normalized" VS "relative"
   mutate(dc=1-as.numeric(r)) %>%
-  select(-r) %>% #delete the original column named "r", in exp11 the r means CMD levels, and w means ribosome protection index
-  dplyr::rename("r"="w", "exp11combo"="combo", "RMMCexp11"="NMMC") %>% # change the original col named "w" into "r", b/c "r" in exp0 means ribosome protection index
+  select(-r) %>% #delete the original column named "r", in trial data the r means CMD levels, and w means ribosome protection index
+  dplyr::rename("r"="w", "trialCombo"="combo", "RMMCtrial"="NMMC") %>% # change the original col named "w" into "r", b/c "r" in exp0 means ribosome protection index
   mutate(combo=paste0("dc_", dc, "_r_", r)) %>%
-  select(-exp11combo, -dc, -r)
+  select(-trialCombo, -dc, -r)
   
 
 combinedRMMC <- (l %>%
     filter(combo != "mRNAconstant") %>%
     left_join(., tmp, by = c("combo"="combo", "ORF"="ORF"))) %>%
-    select("combo", "RMMC", "RMMCexp11", "dc", "r") %>%
-    dplyr::rename("AfterScaling"="RMMC", "BeforeScaling"="RMMCexp11")
+    select("combo", "RMMC", "RMMCtrial", "dc", "r") %>%
+    dplyr::rename("AfterScaling"="RMMC", "BeforeScaling"="RMMCtrial")
     
 sup1 <- combinedRMMC %>%
     pivot_longer(names_to = "key", values_to = "RMMCvalue", cols = 2:3) %>%
