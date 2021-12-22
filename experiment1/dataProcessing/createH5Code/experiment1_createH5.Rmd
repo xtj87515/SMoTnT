@@ -9,6 +9,7 @@ Load libraries and public variables
 rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
 ```
 
+NOTE: CHANGE RAW OUTPUT FOLDER TO CURRENT FOLDER, 12/21/2021
 ```{r}
 # Raw simulation output folder
 rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
@@ -239,8 +240,8 @@ print(Sys.time())
 
 ### Step 3: Prep for writing data for dtype1/2 (took ~1min to run), this step should be ran after all output files are ready stored on the server, the filenames will then be stored in each fileGroup.
 ```{r}
-createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #numberOfDataType = 9/3/4 for dtype1/2/3
-    numGroups <- numberOfDataType * length(dcrDataframe$paraCombo)   
+createFileGroups <- function(numberOfDataType, datatype){  #numberOfDataType = 9/3/4 for dtype1/2/3
+    numGroups <- numberOfDataType * length(dc.r.df$paraCombo)   
     # e.g. numGroups: for dtype1 = 9*25 = 225, dtype2 = 3*25 = 75, dtype3 = 4*25 = 100
     
     # fileGroupIndex contains the indices of combinations between data type and dc.r.combo. 
@@ -248,7 +249,7 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
                                         dc.r.combo = integer(numGroups)))
     groupid = 1
     for(i in 1:numberOfDataType){                         # 9 data types included in dtype1
-        for(j in 1:length(dcrDataframe$paraCombo)){       # dc/r combo + 1 mRNAconstant
+        for(j in 1:length(dc.r.df$paraCombo)){       # dc/r combo + 1 mRNAconstant
             if(groupid <=numGroups){
                 fileGroupIndex[groupid, ] <- as.list(c(i, j)) # as.list() otherwise gets error message "Row updates require a list value"
                 groupid <- groupid+1
@@ -260,7 +261,7 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
     fileGroup = tibble(data.frame(matrix(NA, ncol = 2 + numTechReps, nrow = numGroups)))
     for(groupID in 1:numGroups){
         dtp <- as.character(datatype[unlist(fileGroupIndex[groupID, 1])])  #e.g. "gene_sp_countElng_perMin"
-        dc.r <- (dcrDataframe$paraCombo)[unlist(fileGroupIndex[groupID, 2])] # e.g. "dc_0_r_1"
+        dc.r <- (dc.r.df$paraCombo)[unlist(fileGroupIndex[groupID, 2])] # e.g. "dc_0_r_1"
         outfolder <- paste(rawSimOutFolder, dtp, sep = "/")
         
         if(dc.r == "mRNAconstant"){
@@ -271,7 +272,7 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
         }
         
         fileGroupVec <- c(dtp, dc.r, fileGroupVec)
-        fileGroup[, ] <- as.list(fileGroupVec)
+        fileGroup[groupID, ] <- as.list(fileGroupVec)
         
         # keep track of the progress
         if(groupID%%50 == 0){  
@@ -282,9 +283,9 @@ createFileGroups <- function(numberOfDataType, datatype, dcrDataframe){  #number
     
 }
 
-createFileGroups(length(dtype1), dtype1, dc.r.df)
-createFileGroups(length(dtype2), dtype2, dc.r.df)
-createFileGroups(length(dtype3), dtype3, dc.r.df)
+createFileGroups(length(dtype1), dtype1)
+createFileGroups(length(dtype2), dtype2)
+createFileGroups(length(dtype3), dtype3)
 ```
 
 ### Step 4: Functions to write data from raw output into h5
@@ -373,7 +374,7 @@ write_h5_dtype2 <- function(groupID, fileGroup){            # input = groupID 1:
             
             # If the lifeTimeVec length is smaller than numTechReps*100 = 50*100 = 5000, then supplement sampledLifeTimes with multiple NAs so it can fill up dataNseedsH5.
             if(length(lifeTimeVec)>numTechReps*100){
-                sampledLifeTimes <- sample(lifeTimeVec, numTechReps*100)
+                sampledLifeTimes <- sample(lifeTimeVec, numTechReps*100, replace = FALSE)
             }else{
                 sampledLifeTimes <- c(lifeTimeVec, rep(NA, numTechReps*100-length(lifeTimeVec)))
             }
@@ -482,6 +483,8 @@ h5closeAll()
 ####################################### dtype1
 # View(h5read(simOutputH5,'YAL001C/gene_sp_countElng_perMin/mRNAconstant'))
 # View(h5read(simOutputH5,'YAL001C/gene_sp_countElng_perMin/dc_0_r_0'))
+# View(h5read(simOutputH5,'YAL001C/gene_sp_countElng_perMin/dc_1_r_0'))
+# View(h5read(simOutputH5,'YAL001C/gene_sp_countElng_perMin/dc_0.2_r_0.1'))
 # View(h5read(simOutputH5,'YAL001C/gene_sp_decCount_perMin/dc_0.2_r_0.1'))
 # View(h5read(simOutputH5,'YAL001C/gene_sp_meanElngTime_perMin/dc_0.4_r_0.4'))
 # View(h5read(simOutputH5,'YAL001C/gene_sp_mRNAcount_perMindc_0.4_r_1'))

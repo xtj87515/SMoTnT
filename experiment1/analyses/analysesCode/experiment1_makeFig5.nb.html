@@ -220,19 +220,6 @@ pre code {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBGaWxlIHRoYXQgY29udGFpbnMgc2ltdWxhdGlvbiBvdXRwdXQgZGF0YSBpbiBhIEhERjUgZGlyZWN0b3J5IHN0cnVjdHVyZSBzcGVjaWZpZWQgaW4gXCIvcHVibGljVmFyaWFibGVzL2NyZWF0ZVB1YmxpY1ZhcmlhYmxlcy5SbWRcIlxuc2ltT3V0cHV0SDUgPC0gcGFzdGUwKFwiLi4vLi4vZGF0YVByb2Nlc3Npbmcvc2ltT3V0cHV0SDVEYXRhL1wiLCBleHBlcmltZW50SUQsIFwiX291dHB1dC5oNVwiKVxuXG4jIEEgY29tcHJlaGVuc2l2ZSB0YWJsZSB0aGF0IGNvbnRhaW5zIGFsbCBzaW11bGF0aW9uIGlucHV0IGFuZCBjYWxjdWxhdGVkIG91dHB1dCBtZXRyaWNzXG5hbGxTaW1JbnB1dE91dHB1dCA8LSByZWFkX2ZlYXRoZXIoXCIuLi9hbGxTaW1JbnB1dE91dHB1dC5mZWF0aGVyXCIpXG5cbiMgVGhpcyBmb2xkZXIgY29udGFpbnMgcmF3IG91dHB1dCBmaWxlcyBmcm9tIHRoZSBzaW11bGF0aW9ucy4gVGhpcyBpcyBuZWVkZWQgZm9yIGNhbGN1bGF0ZV9wYXJhX3NwX21jcHNyKClcbnJhd1NpbU91dEZvbGRlciA8LSBcIi90ZWFtL2JhdGNoX1NNT1ROVC9leHBlcmltZW50MV9vdXRwdXRcIlxuXG4jIFdoZXJlIGZpZ3VyZXMgYXJlIHN0b3JlZFxuZmlndXJlQmFzZUZvbGRlciA8LSBcIi4uL2ZpZ3VyZXMvXCJcbmBgYCJ9 -->
-<pre class="r"><code># File that contains simulation output data in a HDF5 directory structure specified in &quot;/publicVariables/createPublicVariables.Rmd&quot;
-simOutputH5 &lt;- paste0(&quot;../../dataProcessing/simOutputH5Data/&quot;, experimentID, &quot;_output.h5&quot;)
-
-# A comprehensive table that contains all simulation input and calculated output metrics
-allSimInputOutput &lt;- read_feather(&quot;../allSimInputOutput.feather&quot;)
-
-# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
-rawSimOutFolder &lt;- &quot;/team/batch_SMOTNT/experiment1_output&quot;
-
-# Where figures are stored
-figureBaseFolder &lt;- &quot;../figures/&quot;</code></pre>
-<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->

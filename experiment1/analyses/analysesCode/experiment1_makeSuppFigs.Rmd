@@ -99,6 +99,34 @@ allSimInputOutput %>%
               legend.position = "bottom", 
               strip.text.x = element_text(size=10), 
               strip.text.y = element_text(size=10))
+
+
+allSimInputOutput %>%
+        filter(paraCombo!="mRNAconstant") %>%
+        ggplot(aes(x=mRNAabundance, y=RMMC)) +
+        geom_point(size = 0.2) +
+        facet_grid(dc~r, labeller=labeller(dc=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="Co-trns 0%"), r=c("0"="Ribo prot indx = 0", "0.1"="0.1", "0.4"="0.4", "1"="1"), label_parsed)) + 
+        labs(#title = "Fig S1: mRNA counts when varying are laregely equal to when they are constant \nafter scaling the mRNA synthesis rates", 
+             x="mRNA abundance",
+             y="relative mean mRNA count") +
+        #scale_y_continuous() +
+        scale_x_log10() +
+        theme_bw() +
+        theme(text=element_text(size=13), 
+              legend.title = element_blank(), 
+              legend.position = "bottom")
+  
+
+allSimInputOutput %>%
+  group_by(paraCombo) %>%
+  summarise(M = mean(RMMC)) %>%
+  arrange(desc(M))
+
+allSimInputOutput %>%
+  group_by(dc) %>%
+  summarise(M = mean(RMMC)) %>%
+  arrange(desc(M))
+
 ```
 
 

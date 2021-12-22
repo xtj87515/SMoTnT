@@ -33,9 +33,9 @@ In order to recreate the analysis, you simply need to clone the repository, and 
 
 ```
 
-Then, download the simulation output h5 data (https://www.) and place it in /experiment1/dataProcessing/simOutputH5Data/. Upon downloading the data, you should change the filenames to the following new file name: "experiment1_output.h5". 
+Then, download the simulation output h5 data (https://www.) and place it in `/experiment1/dataProcessing/simOutputH5Data/`. Upon downloading the data, you should change the filenames to the following new file name: "experiment1_output.h5". 
 
-Next, download the trial mRNA count data (https://www.) and place it in /experiment1/simulations/trialmRNAcountData/. Upon downloading the data, you should change the filenames to the following new file name: "trial_mRNAcount.feather". This data was generated from previous trial simulations, and is used to calculate scaled mRNA synthesis rates for experiment1 (see Methods), as well as to compare the scaled VS non-scaled mRNA synthesis rates in supplementary figures. 
+Next, download the trial mRNA count data (https://www.) and place it in `/experiment1/simulations/trialmRNAcountData/`. Upon downloading the data, you should change the filenames to the following new file name: "trial_mRNAcount.feather". This data was generated from previous trial simulations, and is used to calculate scaled mRNA synthesis rates for experiment1 (see Methods), as well as to compare the scaled VS non-scaled mRNA synthesis rates in supplementary figures. 
 
 After that, it should just be a matter of running the code in the specified order. **To ensure smooth running of the code, start with a clean R environment for each Rmd**. Include step 1 and 2 if the simulations are to be conducted with different parameters. To analyze current data sets, skip step 1 and 2. 
 
@@ -64,7 +64,3 @@ After that, it should just be a matter of running the code in the specified orde
 5. `experiment1/analyses/analysesCode/experiment1_makeFig4.Rmd` 
 6. `experiment1/analyses/analysesCode/experiment1_makeFig5.Rmd` 
 7. `experiment1/analyses/analysesCode/experiment1_makeSuppFigs.Rmd` 
-
-
-
-
