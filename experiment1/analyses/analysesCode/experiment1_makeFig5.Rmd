@@ -23,6 +23,9 @@ rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
 figureBaseFolder <- "../figures/"
 ```
 
+
+
+BELOW IS THE OLD FIGURE 5
 ```{r}
 figure5a <- allSimInputOutput %>%
   filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMPSR>0.6) %>% 
@@ -86,15 +89,12 @@ figure5c <- allSimInputOutput %>%
   )
 
 ######################################################### figure5d  
-
-
 figure5d <- allSimInputOutput%>%
   filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo!="mRNAconstant") %>%
   mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
   ggplot(aes(x=dc_fct, y=RMMDR, fill=r)) +
   geom_boxplot(outlier.size = 0.1) +
-  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput%>%filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo=="dc_1_r_0")%>%select(RMMDR))), na.rm = TRUE)), 
-             color="red", linetype="dashed") +
+  geom_hline(aes(yintercept = 1), color="red", linetype="dashed") +
   theme_bw() +
   labs(x="CMD level",
        y="Ratio between output/input decay rates") +
@@ -104,7 +104,6 @@ figure5d <- allSimInputOutput%>%
     text = element_text(size = 13),
     legend.position = "none"
   )
-  
 
 ```
 
@@ -115,33 +114,8 @@ figure5 +
     title = "Figure 5",
     tag_levels = 'A') 
 
-ggsave(paste0(figureBaseFolder, "d_fig_5.png"), dpi=200, height = 10, width = 12.5)
+ggsave(paste0(figureBaseFolder, "e_fig_5.png"), dpi=200, height = 10, width = 12.5)
 
 ```
 
 
-```{r fig.height=5,fig.width=12}
-allSimInputOutput %>%
-  filter(paraCombo == "dc_0_r_0", mRNADecRateNeymotin_sec != 0,mRNAabundance>1, ORF!="YER053C-A", ORF!="YLR106C") %>%  #remove the gene with HL=450min, also an outlier gene "YLR106C" with RMTE==0.6
-  select(ORF,paraCombo,RMMDR,mRNAabundance_log10,iniProb_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
-  `colnames<-`(c("ORF","paraCombo","RMMDR","log(mRNALevel)","log(IniProb)", "log(DecRate)", "CAI", "log(Length)")) %>%
-  pivot_longer(cols = -c(RMMDR, paraCombo, ORF), names_to = "feature", values_to = "featureVal") %>%
-  ggplot(aes(x=featureVal,y=RMMDR,color=paraCombo)) +
-  geom_point(size=0.5) +
-  facet_wrap(~feature, scales = "free", nrow=1, strip.position = "bottom") +
-  theme_bw() +
-  scale_y_log10() +
-  theme(text = element_text(size = 13),
-            legend.position = "none",
-            strip.text = element_text(color="black",size=rel(1.2)),  # can't use element_blank() here because it gives error when p1+p2
-            plot.margin = margin(r = 0, unit = "pt"),
-            panel.grid = element_blank(),
-            strip.background = element_blank(),  
-            strip.placement = "outside"     #to put the strip labels below x-axis
-    ) +
-      labs(x = "",
-           y = "Output/input decay rates") +
-      geom_smooth(method="lm") +
-      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.8, size=5) +
-      scale_color_manual(name="",labels=c(""), values = c("dc_0_r_0" = "#1F78B4"))
-```

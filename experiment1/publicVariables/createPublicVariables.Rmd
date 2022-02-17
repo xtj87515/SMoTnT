@@ -10,6 +10,7 @@ library(feather)
 library(tidyverse)
 library(ggpubr)
 library(parallel)
+library(patchwork)
 ```
 
 ### Load the tsv file that contains all input gene names, features, mRNA decay/synthesis rates and their log transformed values when appropriate.

@@ -168,38 +168,41 @@ calculate_para_sp_mcpsr <- function(pid){
 
 ```{r}
 # mte = mean translation efficiency
-calculate_gene_sp_mte <- function(geneID, simOutputH5){   
+calculate_gene_sp_mte <- function(geneID, simOutputH5){
     # outvec has 25 elements. Each element is the mte for the 1 mRNAconstant + 24 different dc/r combos
-    outvec <- vector() 
-    
+    outvec <- vector()
+
     # current gene name out of the 4839 genes, and its initial mRNA level
     currentGene <- geneNames[geneID]
     mRNAabundanceCurrentGene <- simInputFeatures$mRNAabundance[geneID]
-    
+
     # matrix that contains countElng info for current gene.
     # te = translation efficiency, mte = mean translation efficiency
     countElng_mRNAconstant <- h5read(simOutputH5, paste0(currentGene, "/gene_sp_countElng_perMin/mRNAconstant"))
     te_mRNAconstant <- countElng_mRNAconstant/mRNAabundanceCurrentGene
     mte_mRNAconstant <- mean(te_mRNAconstant)
     outvec <- c(outvec, mte_mRNAconstant)
-    
+
     # loop through the dc/r parameter space
-    for(i in 2:nrow(dc.r.df)){ 
+    for(i in 2:nrow(dc.r.df)){
         countElng_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_countElng_perMin", dc.r.df$paraCombo[i], sep = "/"))
         mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
         # te = translation efficiency
-        te_mRNAvarying <- countElng_mRNAvarying/mRNAcount_mRNAvarying   
+        te_mRNAvarying <- countElng_mRNAvarying/mRNAcount_mRNAvarying
         # change all the "Inf"s to "Nan"s
-        te_mRNAvarying[!is.finite(te_mRNAvarying)] <- NaN 
+        te_mRNAvarying[!is.finite(te_mRNAvarying)] <- NaN
         # mte = mean translation rate averaged over time and tech reps
-        mte_mRNAvarying <- mean(te_mRNAvarying, na.rm = TRUE) 
+        mte_mRNAvarying <- mean(te_mRNAvarying, na.rm = TRUE)
         outvec <- c(outvec, mte_mRNAvarying)
     }
-    
+
     h5closeAll()
     return(outvec)
 }
 ```
+
+
+
 
 ```{r}
 # mvte = mean of the variance in translation efficiency
@@ -387,30 +390,60 @@ calculate_gene_sp_cvml <- function(geneID, simOutputH5){
 ```
 
 ```{r}
-# mmdr- mean mRNA decay rates
+# # mmdr- mean mRNA decay rates calculated from life times, abondoned, because of inaccuracy
+# calculate_gene_sp_mmdr <- function(geneID, simOutputH5){
+#     # outvec has 25 elements. Each element is the mmdr for the 1 mRNAconstant + 24 different dc/r combos
+#     outvec <- vector()
+# 
+#     # current gene name out of the 4839 genes
+#     currentGene <- geneNames[geneID]
+# 
+#     # loop through the dc/r parameter space
+#     for(i in 1:nrow(dc.r.df)){
+#         # ml = mRNA life time averaged over simulation time
+#         ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))
+#         # mml = mean mRNA life time averaged over 5000 values (or maybe less than 10000 filled with NAs)
+#         mml <- mean(ml, na.rm = TRUE)
+#         # decay rate = 1/mean lifetime
+#         mmdr <- 1/mml
+# 
+#         outvec <- c(outvec, mmdr)
+#     }
+# 
+#     h5closeAll()
+#     return(outvec)
+# }
+```
+
+
+```{r}
+# mmdr- mean mRNA decay rates calculated from mRNA decay counts per minute
 calculate_gene_sp_mmdr <- function(geneID, simOutputH5){     
-    # outvec has 25 elements. Each element is the mmdr for the 1 mRNAconstant + 24 different dc/r combos
+    # outvec has 25 elements. Each element is the mmc for the 1 mRNAconstant + 24 different dc/r combos
     outvec <- vector() 
     
-    # current gene name out of the 4839 genes
+    # current gene name out of the 4839 genes,  and its initial mRNA level
     currentGene <- geneNames[geneID]
+    outvec <- c(outvec, NA)
+    
+    # loop through the dc/r parameter space
+    for(i in 2:nrow(dc.r.df)){  
+        mRNAcount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        decCount_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_decCount_perMin", dc.r.df$paraCombo[i], sep = "/"))
 
-    # loop through the dc/r parameter space 
-    for(i in 1:nrow(dc.r.df)){  
-        # ml = mRNA life time averaged over simulation time
-        ml <- h5read(simOutputH5, paste(currentGene, "mRNA_lifeTimes", dc.r.df$paraCombo[i], sep = "/"))  
-        # mml = mean mRNA life time averaged over 5000 values (or maybe less than 10000 filled with NAs)
-        mml <- mean(ml, na.rm = TRUE)  
-        # decay rate = 1/mean lifetime
-        mmdr <- 1/mml 
+        #decCountPermRNA <- unlist(lapply(1:numTechReps, function(x){mean(decCount_mRNAvarying[x,])/mean(mRNAcount_mRNAvarying[x,])})) # vector of 50 numbers
+        # mmdr_perSec <- mean(decCountPermRNA, na.rm = TRUE)/60 # convert the per minute decay rate to per sec rate
         
-        outvec <- c(outvec, mmdr)
+        decCountPermRNA <- mean(decCount_mRNAvarying)/mean(mRNAcount_mRNAvarying)
+        mmdr_perSec <- decCountPermRNA/60
+        outvec <- c(outvec, mmdr_perSec)
     }
     
     h5closeAll()
     return(outvec)
 }
 ```
+
 
 ```{r}
 #"gene_sp_mRNAmarkedDecay_perMin", 1st level: 4839 genes, 2nd: dtype, 3rd: dc/r combo or mRNAconstant, 4th: 50 rep X 720 min
@@ -552,6 +585,32 @@ calculate_gene_sp_mvtt <- function(geneID, simOutputH5){
 }
 ```
 
+pmpsr = predicted mean protein synthesis rates, calculated by 
+= initiation rate X mRNA synthesis rate 
+= ((ini prob X free ribo number)/(ribo characteristic time * ribo discrete positions)) X mRNA synthesis rate
+```{r}
+# ppsr = predicted protein synthesis rates
+calculate_gene_sp_pmpsr <- function(geneID, simOutputH5){  
+    # outvec has 25 elements. Each element is the ppsr for the 1 mRNAconstant + 24 different dc/r combos
+    outvec <- vector()
+    
+    # current gene name out of the 4839 genes
+    currentGene <- geneNames[geneID]
+    
+    # loop through the dc/r parameter space
+    for(i in 1:nrow(dc.r.df)){ 
+        
+        mRNAcount <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
+        freeRiboCount <- h5read(simOutputH5, paste("free_ribo_tRNA_perMin",dc.r.df$paraCombo[i], "ribo", sep = "/"))
+        #pmpsr <- mean(mRNAcount * freeRiboCount) * simInputFeatures$iniProb[geneID]/ (5e-4 * 60 * 1.56e-6)
+        pmpsr <- ((simInputFeatures$iniProb[geneID]*mean(freeRiboCount))/(5e-4/60 * 1.56e+6)) * mean(mRNAcount)
+        outvec <- c(outvec, pmpsr)
+    }
+    
+    h5closeAll()
+    return(outvec)
+}
+```
 
 
 
@@ -807,6 +866,19 @@ write_feather(mvttAllgeneAlldcr, path = "../calculatedMetrics/mvttAllgeneAlldcr.
 
 ```
 
+```{r}
+print(Sys.time())
+pmpsrList <- mclapply(1:4839, function(x){calculate_gene_sp_pmpsr(geneID = x, simOutputH5 = simOutputH5)}, mc.cores = 45)
+# took 2min to run
+print(Sys.time())
+
+# ncol = 25, nrow = 4839
+pmpsrAllgeneAlldcr <- as_tibble(do.call(rbind, pmpsrList))
+
+write_feather(pmpsrAllgeneAlldcr, path = "../calculatedMetrics/pmpsrAllgeneAlldcr.feather")
+
+```
+
 # calculating the mean number of free ribos (averaged over simTimeMin and techReps) for all dc.r.combos
 ```{r}
 # MFR = mean free ribo
@@ -826,7 +898,7 @@ rmfr_df <- as_tibble(data.frame(RMFR = rmfr,
 ```
 
 
-# getting all input features and output results together in allSimInputOutput
+# getting all input sequence features and output results together in allSimInputOutput
 ```{r}
 # convert any input dataframes (e.g. mteAllgeneAlldcr) to long format
 df.convert.fun <- function(x){   

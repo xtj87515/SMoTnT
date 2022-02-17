@@ -59,7 +59,7 @@ figure4a <- allSimInputOutput %>%
     theme_bw() +
     scale_x_log10(labels = scales::percent) +
     theme(text = element_text(size = 13), 
-        legend.position = c(0.14, 0.8), 
+        legend.position = c(0.12, 0.8), 
         legend.background = element_rect(fill=alpha(0.7)),
         legend.text = element_text(size=rel(0.7)),
         panel.grid = element_blank()
@@ -107,16 +107,59 @@ figure4c <- (allSimInputOutput %>%
         scale_x_discrete(limits = c("100%", "80%", "60%", "40%", "20%", "0")) +
         labs(x="CMD levels",
              y="Relative mean protein synthesis rate\n(relative to 100%)")
+
+# figure4d <- allSimInputOutput %>%  
+#     filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MMDP>1e-05, dc!=0) %>% 
+#     select(ORF, MMDP, r, dc) %>%
+#     mutate(CoTransProportion = paste0(as.numeric(dc)*100, "%")) %>%
+#     ggplot(aes(x = CoTransProportion, y=MMDP)) +
+#     geom_boxplot() +
+#     theme_bw() +
+#     labs ( title = "",
+#                 x ="CMD levels",
+#                 y = "Proportion of mRNAs undergoiong CMD") +
+#     theme(text = element_text(size = 13),
+#           panel.grid = element_blank()) +
+#     scale_x_discrete(limits = c("100%", "80%", "60%", "40%", "20%")) +
+#     scale_y_log10(labels = scales::percent_format(accuracy = 0.01L))
+# 
+# figure4e <- allSimInputOutput %>%  
+#     filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>%
+#     select(ORF, RMMDR, r, dc) %>%
+#     mutate(CoTransProportion = paste0(as.numeric(dc)*100, "%")) %>%
+#     ggplot(aes(x = CoTransProportion, y=RMMDR)) +
+#     geom_boxplot() +
+#     geom_hline(aes(yintercept = 1), color="red", linetype="dashed") +
+#     theme_bw() +
+#     labs ( title = "",
+#                 x ="CMD levels",
+#                 y = "Relative mRNA degradation rates") +
+#     theme(text = element_text(size = 13),
+#           panel.grid = element_blank()) +
+#     scale_x_discrete(limits = c("100%", "80%", "60%", "40%", "20%","0%")) 
+
 ```
 
-```{r fig.height = 9, fig.width=12.5}
-figure4 <- (figure4a+figure4b)/figure4c
+```{r fig.height = 8, fig.width=12}
+figure4 <- ((figure4a | figure4b) + plot_layout(widths = c(.6, .4))) /figure4c
 figure4 + 
   plot_annotation(
     title = "Figure 4",
     tag_levels = 'A') 
 
-ggsave(paste0(figureBaseFolder, "d_fig_4.png"), dpi=200, height = 9, width = 12.5)
+ggsave(paste0(figureBaseFolder, "d_fig_4.png"), dpi=200, height = 8, width = 12)
 
+```
+
+```{r}
+cpsrAlldcrAllrep %>%  
+    pivot_longer(cols = everything(), names_to = "paraCombo", values_to = "CPSRval") %>%
+    left_join(dc.r.df,  by="paraCombo") %>%
+    filter(r==0) %>%
+    mutate(norm.cpsr = CPSRval/median(cpsrAlldcrAllrep$dc_1_r_0)) %>%   # normalizing all cells against the median cpsr value of dc_1_r_0
+    mutate(CoTransProportion = paste0(as.numeric(dc)*100, "%")) %>%
+    group_by(dc) %>%
+    summarise(M = mean(norm.cpsr)) %>%
+    arrange(desc(M))
 ```
 

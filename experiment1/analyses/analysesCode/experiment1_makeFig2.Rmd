@@ -97,7 +97,7 @@ TE_byTimeRep <- function(gName1, gName2, gName3)
 
 ```{r}
 figure2c <- allSimInputOutput %>%
-  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0") %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", MTE > 0.1) %>%
   select(paraCombo, MTE, ORF) %>%
   spread(paraCombo, MTE) %>%
   ggplot(aes(x=mRNAconstant, y=dc_1_r_0)) +
@@ -118,7 +118,7 @@ figure2c <- allSimInputOutput %>%
       scale_color_manual(values = c("dc_1_r_0" = "#00BFC4"))
 
 figure2d <- allSimInputOutput %>%
-  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0") %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", MTE > 0.1) %>%
   select(paraCombo, MVTE, ORF, mRNAabundance) %>%
   mutate(clr = ifelse(mRNAabundance>1, "mRNALevel>1", "mRNALevel=1")) %>%
   spread(key = paraCombo, value = MVTE) %>%
@@ -136,13 +136,13 @@ figure2d <- allSimInputOutput %>%
     ) +
       labs(x = 'Variance in TE for mRNA constant',
            y = 'Variance in TE for mRNA varying')+
-      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.1, label.y.npc = 0.5, size=5) +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.1, label.y.npc = 0.7, size=5) +
       scale_x_log10() +
       scale_y_log10() +
       scale_color_manual(values = c("mRNALevel>1" = "black","mRNALevel=1" = "dark grey"))
 
 figure2e <- allSimInputOutput %>%
-  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0) %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0, RMTE > 0.8) %>%
   ggplot(aes(x=RMTE, y=RMVTE, color = paraCombo)) +
   geom_point(size = 0.5) +
   theme_bw() +
@@ -154,29 +154,44 @@ figure2e <- allSimInputOutput %>%
     ) +
       labs(x ="Rel. mean of translation efficiency \n(exclud. mRNAabundance=1 and internal ctrl)",
            y = "Rel. variance of translation efficiency \n") +
-      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.2, label.y.npc = 0.3, size=5) +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.2, label.y.npc = 0.6, size=5) +
       scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
       scale_y_log10() +
       scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("black"))
 
+# figure2f <- allSimInputOutput %>%
+#   filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0) %>%
+#   select(ORF, RMTE, RMVTE) %>% #remove the gene with the 450min HL
+#   pivot_longer(!ORF, names_to = "meanORvar", values_to = "val") %>%
+#   ggplot() +
+#   geom_density(aes(x=val, linetype=meanORvar)) +
+#   theme_bw() +
+#   theme(text = element_text(size = 13),
+#         legend.position = c(0.6, 0.6),
+#         axis.title.x = element_blank(),
+#         axis.ticks.y = element_blank(),
+#         plot.margin = margin(r = 0, unit = "pt"),
+#         panel.grid = element_blank()) +
+#     scale_color_manual(values = c("RMTE"="black", "RMVTE"="black")) +  
+#     scale_linetype_manual(name = "", labels=c("RMTE"="Rel. mean of trans. effis",
+#                                               "RMVTE"="Rel. variance of trans. effi."),
+#                           values = c("RMTE"=1, "RMVTE"=3)) + 
+#     scale_x_log10()
+
 figure2f <- allSimInputOutput %>%
-  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0) %>%
-  select(ORF, RMTE, RMVTE) %>% #remove the gene with the 450min HL
-  pivot_longer(!ORF, names_to = "meanORvar", values_to = "val") %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0, RMTE> 0.8) %>% # only 6 genes have RMTE <=0.8, exclude the gene with the 450min HL
+  select(ORF, RMTE) %>% 
   ggplot() +
-  geom_density(aes(x=val, linetype=meanORvar)) +
+  geom_density(aes(x=RMTE)) +
   theme_bw() +
   theme(text = element_text(size = 13),
         legend.position = c(0.6, 0.6),
-        axis.title.x = element_blank(),
         axis.ticks.y = element_blank(),
         plot.margin = margin(r = 0, unit = "pt"),
         panel.grid = element_blank()) +
-    scale_color_manual(values = c("RMTE"="black", "RMVTE"="black")) +  
-    scale_linetype_manual(name = "", labels=c("RMTE"="Rel. mean of trans. effis",
-                                              "RMVTE"="Rel. variance of trans. effi."),
-                          values = c("RMTE"=1, "RMVTE"=3)) + 
-    scale_x_log10()
+  labs(x = "Relative mean translation efficiency") +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  scale_x_log10()
 
 ```
 
@@ -192,3 +207,5 @@ figure2 + plot_annotation(
 ggsave(paste0(figureBaseFolder, "b_fig_2.png"), dpi=200, height = 10, width = 15)
 
 ```
+
+

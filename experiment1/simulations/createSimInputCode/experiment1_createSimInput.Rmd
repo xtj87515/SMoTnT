@@ -29,7 +29,7 @@ trialmRNAsynRate <- trialDecSynFile$X3 # 3rd column contains the mRNA synthesis 
 
 ### Step 1: copy the above file into simInput/ and rename it. It will serve as one (out of 25 dc/r combos) of the input files for the simulations. Also copy the input file for mRNA constant from previous trial runs.
 ```{r, include = FALSE}
-write_tsv(trialDecSynFile, file = "../simInput/allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv")
+write_tsv(trialDecSynFile, file = "../simInput/allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv", col_names = FALSE)
 write_tsv(read_tsv("trial_allGenes_mRNAconstant_S.cer.mRNA.ini.abndc.syn.dec.tsv"), file = "../simInput/allGenes_mRNAconstant_S.cer.mRNA.ini.abndc.syn.dec.tsv")
 ```
 

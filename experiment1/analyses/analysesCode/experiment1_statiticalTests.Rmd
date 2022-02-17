@@ -1,0 +1,29 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+A dispersion test to check if the mRNA count in Fig 1A follows a Poisson distribution. It relies on the fact that the Poisson distribution's mean is equal to its variance, and the the ratio of the variance to the mean in a sample of n counts from a Poisson distribution should follow a Chi-square distribution with n-1 degrees of freedom.
+
+This allows you to reject the null hypothesis that your data are Poisson distributed if the p value is <0.05. If the p value is above 0.05, you could accept that the data followed a Poisson distribution.
+```{r}
+dispersion_test <- function(x) 
+{
+  res <- 1-2 * abs((1 - pchisq((sum((x - mean(x))^2)/mean(x)), length(x) - 1))-0.5)
+
+  cat("Dispersion test of count data:\n",
+      length(x), " data points.\n",
+      "Mean: ",mean(x),"\n",
+      "Variance: ",var(x),"\n",
+      "Probability of being drawn from Poisson distribution: ", 
+      round(res, 3),"\n", sep = "")
+
+  invisible(res)
+}
+```
+
+```{r}
+x <- h5read(simOutputH5, "YOR369C/gene_sp_mRNAcount_perMin/dc_1_r_0")[1,]
+dispersion_test(x)
+```
+

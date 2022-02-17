@@ -1,0 +1,62 @@
+BATCH_OPTIONS = -p p_shahlab_1,genetics_1,main -N 1 -n 1 -c 1 --mem=7G -t 04:00:00 -o stdout/%A.out -e error/%A.err -J troubleShoot-amr
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 2214 -O ../output/amr.troubleShoot.seed.2214_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 5490 -O ../output/amr.troubleShoot.seed.5490_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 5871 -O ../output/amr.troubleShoot.seed.5871_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 12520 -O ../output/amr.troubleShoot.seed.12520_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 10967 -O ../output/amr.troubleShoot.seed.10967_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 22236 -O ../output/amr.troubleShoot.seed.22236_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 13868 -O ../output/amr.troubleShoot.seed.13868_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 6325 -O ../output/amr.troubleShoot.seed.6325_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 1562 -O ../output/amr.troubleShoot.seed.1562_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 15424 -O ../output/amr.troubleShoot.seed.15424_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 29778 -O ../output/amr.troubleShoot.seed.29778_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 9782 -O ../output/amr.troubleShoot.seed.9782_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 10075 -O ../output/amr.troubleShoot.seed.10075_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 9784 -O ../output/amr.troubleShoot.seed.9784_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 25115 -O ../output/amr.troubleShoot.seed.25115_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 20140 -O ../output/amr.troubleShoot.seed.20140_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 4376 -O ../output/amr.troubleShoot.seed.4376_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 8637 -O ../output/amr.troubleShoot.seed.8637_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 27668 -O ../output/amr.troubleShoot.seed.27668_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+
+: ../input/S.cer.genom ../input/S.cer.tRNA ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec ../ac_amarelCode/wrapper.sh ../source/SMOTNT
+    ./../ac_amarelCode/wrapper.sh -Tt 43260 -Tb 60 -R 200000 -t 3300000 -N 100 -dc 0 -r 0 -F ../input/S.cer.genom -C ../input/S.cer.tRNA -D ../input/allGenesDecrEqualsSynr_dc_0_r_0_S.cer.mRNA.ini.abndc.syn.dec -s 9590 -O ../output/amr.troubleShoot.seed.9590_dc_0_r_0_allGenesDecrEqualsSynr -p6 -p7
+

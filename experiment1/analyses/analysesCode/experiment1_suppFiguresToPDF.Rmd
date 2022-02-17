@@ -1,0 +1,156 @@
+---
+title: "Figure and captions"
+output: pdf_document
+geometry: "left=1cm,right=1cm,top=1.5cm,bottom=1.5cm"
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r echo = FALSE}
+# Prevent printing of warnings and such in the HTML
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = "center", echo = FALSE, dev = "cairo_pdf")
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+
+# these are the locations of the figure rds, they're read in with no storage to avoid placing a large object in RAM
+figRdsLocs <- dir("../figures", full.names = TRUE, pattern = ".rds")
+
+names(figRdsLocs) <- stringr::str_remove(figRdsLocs, "../figures/") %>% 
+  str_remove(".rds")
+```
+
+### Model validation plot
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "validationPlot"])
+```
+Validation plot: \newpage
+
+### FigureS0
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_a"])
+```
+figS0_a: 
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_b"])
+```
+figS0_b: \newpage
+
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_c"])
+```
+figS0_c: 
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_d"])
+```
+figS0_d: \newpage
+
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_e"])
+```
+figS0_e: 
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_f"])
+```
+figS0_f: \newpage
+
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_g"])
+```
+figS0_g: 
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_h"])
+```
+figS0_h: \newpage
+
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_i"])
+```
+figS0_i: 
+
+```{r fig.height=4, fig.width=6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figS0_j"])
+```
+figS0_j: \newpage
+
+
+
+### FigureS1
+```{r fig.height=6, fig.width=10}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS1"])
+```
+FigureS1: \newpage
+
+
+### FigureS2
+```{r fig.height=6, fig.width=10}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS2"])
+```
+FigureS2: \newpage
+
+
+### FigureS3
+```{r fig.height = 3, fig.width = 8}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS3"])
+```
+FigureS3: 
+
+### FigureS4
+```{r fig.height = 4, fig.width = 6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS4"])
+```
+FigureS4: \newpage
+
+
+### FigureS5
+```{r fig.height = 4, fig.width = 6}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS5"])
+```
+FigureS5: 
+
+### FigureS6
+```{r fig.height = 3, fig.width = 8}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS6"])
+```
+FigureS6: \newpage
+
+
+### FigureS7
+```{r fig.height = 4, fig.width = 7}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS7"])
+```
+FigureS7: 
+
+### FigureS8
+```{r fig.height = 4, fig.width = 7}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS8"])
+```
+FigureS8: \newpage
+
+### FigureS9
+```{r fig.height = 7, fig.width = 10}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS9"])
+```
+FigureS9: \newpage
+
+### FigureS10
+```{r fig.height = 7, fig.width = 10}
+read_rds(figRdsLocs[names(figRdsLocs) == "figureS10"])
+```
+FigureS10: \newpage

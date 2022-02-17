@@ -1,6 +1,8 @@
 ---
 title: "Figures for manuscript"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 Load libraries and public variables
@@ -24,16 +26,17 @@ figureBaseFolder <- "../figures/"
 ```
 
 Validation: compare the protein synthesis rates with Weinberg 2016
-```{r}
+```{r fig.height=4, fig.width=6}
 weinbergData <- read_tsv("../externalData/weinberg_synthesis.txt")
 
-allSimInputOutput %>% 
+validationPlot <- allSimInputOutput %>% 
   filter(paraCombo == "mRNAconstant") %>% 
   select(ORF, paraCombo, MPSR, dc, r) %>%
   left_join(weinbergData[, c("ORF", "S")], by = "ORF") %>%
   mutate(S_perMin=S*60,
          newcombo=factor(paraCombo, levels=dc.r.df$paraCombo[2:25])) %>%
   ggplot(aes(x=MPSR, y=S_perMin)) +
+    geom_abline(linetype="dashed") +
     geom_point() +
     geom_smooth(method="lm") +
     stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.1, label.y.npc = 0.7, size=10) +
@@ -42,10 +45,278 @@ allSimInputOutput %>%
     theme_bw() +
     labs(x="Mean protein synthesis rates for mRNA constant",
          y="Protein synthesis rate estimates by Weinberg et al 2016")
+
+validationPlot
+
+write_rds(validationPlot, "../figures/validationPlot.rds")
+
+
+tmp <- allSimInputOutput %>% 
+    filter(paraCombo == "mRNAconstant") %>% 
+    select(ORF, paraCombo, MPSR) %>%
+    left_join(weinbergData[, c("ORF", "S")], by = "ORF") %>%
+    mutate(S_perMin=S*60) 
+
+# quick try of piping the t test didn't work..
+t.test(tmp$S_perMin, tmp$MPSR, paired = TRUE)
+```
+
+```{r fig.height=4, fig.width=6}
+figS0_a <- allSimInputOutput %>%
+    filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    ggplot(aes(x=MPSR, y=PMPSR, color = paraCombo)) +
+    geom_point(size = 0.5) +
+    geom_abline(linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'Mean of protein synthesis rate'~(min^-1),
+             y = 'Predicted mean of protein synthesis rate'~(min^-1)) +
+        scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() +
+        scale_y_log10()
+
+figS0_a
+write_rds(figS0_a,"../figures/figS0_a.rds")
+######################################################
+figS0_b <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, MVPS, PMPSR, mRNASynRateTotal_sec) %>%
+    mutate(mRNASynRateTotal_min = mRNASynRateTotal_sec*60,
+           additiveVar = PMPSR + mRNASynRateTotal_min,
+           multiplicativeVar = PMPSR * mRNASynRateTotal_min + PMPSR^2*mRNASynRateTotal_min + PMPSR*mRNASynRateTotal_min^2) %>% 
+    select(ORF, MVPS, additiveVar, multiplicativeVar) %>% 
+    pivot_longer(names_to = "predictedVar", values_to = "predictedVarValue", cols = -c(ORF,MVPS)) %>% 
+    ggplot(aes(x=MVPS, y=predictedVarValue, color = predictedVar)) +
+    geom_point(size = 0.5) +
+    geom_abline(linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'Variance of protein synthesis rate'~(min^-1),
+             y = 'Predicted variance of protein synthesis rate'~(min^-1)) +
+        scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() +
+        scale_y_log10()
+
+figS0_b
+write_rds(figS0_b, "../figures/figS0_b.rds")
+######################################################
+figS0_c <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, MPSR, RMPSR) %>% 
+    ggplot(aes(x = MPSR, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'mean prot syn rate for mRNAvarying'~(min^-1),
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() 
+
+figS0_c
+write_rds(figS0_c, "../figures/figS0_c.rds")
+######################################################
+figS0_d <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, MPSR, RMPSR) %>%
+    arrange(MPSR) %>% 
+    # mutate(binNames = c(unlist(lapply(1:19, function(x){rep(x,254)})), rep(20,12))) %>%  # bin all 4838 genes into 20 bins, each contains same number of genes ordered by their MPSR
+    # ggplot(aes(x = factor(binNames, levels = 1:20), y = RMPSR)) +
+    mutate(binNames = c(unlist(lapply(1:9, function(x){rep(x,537)})), rep(10,5))) %>%  # bin all 4838 genes into 10 bins, each contains same number of genes ordered by their MPSR
+    ggplot(aes(x = factor(binNames, levels = 1:10), y = RMPSR)) +
+    geom_boxplot() +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'mean prot syn rate for mRNAvarying'~(min^-1),
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) 
+
+figS0_d
+write_rds(figS0_d, "../figures/figS0_d.rds")
+######################################################
+figS0_e <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, MPSR, RMPSR) %>%
+    arrange(MPSR) %>% 
+    # mutate(binNames = c(unlist(lapply(1:19, function(x){rep(x,254)})), rep(20,12))) %>%  # bin all 4838 genes into 20 bins, each contains same number of genes ordered by their MPSR
+    # ggplot(aes(x = factor(binNames, levels = 1:20), y = RMPSR)) +
+    mutate(binNames = c(unlist(lapply(1:9, function(x){rep(x,537)})), rep(10,5))) %>%  # bin all 4838 genes into 10 bins, each contains same number of genes ordered by their MPSR
+    group_by(binNames) %>% 
+    mutate(test = RMPSR>1) %>% 
+    #mutate(freqRMPSRabove1 = sum(test)/n()) %>% 
+    summarize(freqRMPSRabove1 = sum(test)/n()) %>% 
+    ggplot(aes(x = factor(binNames, levels = 1:10), y = freqRMPSRabove1)) +
+    geom_bar(stat='identity') +
+    #geom_abline(linetype="dashed") +
+    #geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'bins of genes',
+             y = 'freq of rel. mean prot syn rate above 1 in each bin')
+
+figS0_e
+write_rds(figS0_e, "../figures/figS0_e.rds")
+######################################################
+figS0_f <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, mRNAabundance, RMPSR) %>% 
+    ggplot(aes(x = mRNAabundance, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'mRNA abundances',
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() 
+
+figS0_f
+write_rds(figS0_f, "../figures/figS0_f.rds")
+######################################################
+figS0_g <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, CAI, RMPSR) %>% 
+    ggplot(aes(x = CAI, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'CAI',
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) 
+
+figS0_g
+write_rds(figS0_g, "../figures/figS0_g.rds")
+######################################################
+figS0_h <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, iniProb, RMPSR) %>% 
+    ggplot(aes(x = iniProb, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'translation initiation probability',
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() 
+
+figS0_h
+write_rds(figS0_h, "../figures/figS0_h.rds")
+######################################################
+figS0_i <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, geneLength_codon, RMPSR) %>% 
+    ggplot(aes(x = geneLength_codon, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'gene length (codon)',
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() 
+
+figS0_i
+write_rds(figS0_i, "../figures/figS0_i.rds")
+######################################################
+figS0_j <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    select(paraCombo, ORF, mRNADecRateNeymotin_min, RMPSR) %>% 
+    ggplot(aes(x = mRNADecRateNeymotin_min, y = RMPSR)) +
+    geom_point(size = 0.5) +
+    #geom_abline(linetype="dashed") +
+    geom_hline(yintercept = 1, linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "top",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'mRNA decay rates from Neymotin data (min)',
+             y = 'relative mean prot syn rate for mRNAvarying'~(min^-1)) +
+        #scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
+        geom_smooth() +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
+        scale_x_log10() 
+
+figS0_j
+write_rds(figS0_j, "../figures/figS0_j.rds")
 ```
 
 
-```{r fig.width=10}
+
+Fig S1
+```{r fig.height = 6, fig.width=10}
 trial_mRNAcount <- read_feather("../../simulations/trialmRNAcountData/trial_mRNAcount.feather")
 trial_mRNAcount
 
@@ -68,7 +339,25 @@ figureS1 <- allSimInputOutput %>%
 
 figureS1
 
+write_rds(figureS1, "../figures/figureS1.rds")
 #ggsave(paste0(figureBaseFolder, "figures1/s_fig_1.png"), dpi=100, height = 6, width = 8)
+
+###########################################################
+allSimInputOutput %>% 
+  filter(paraCombo != "mRNAconstant") %>% 
+  select(paraCombo, RMMC, dc, r) %>% 
+  ggplot(aes(x = RMMC)) + 
+      geom_density() +
+      facet_grid(dc~r, labeller=labeller(dc=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="Co-trns 0%"), r=c("0"="Ribo prot indx = 0", "0.1"="0.1", "0.4"="0.4", "1"="1"), label_parsed)) + 
+      labs(x="Relative mean mRNA count after scaling") +
+      scale_y_continuous() +
+      theme_bw() +
+      theme(text=element_text(size=13), 
+            legend.title = element_blank(), 
+            legend.position = "none") +
+      geom_vline(xintercept = 1, linetype = "dashed")
+
+
 ###########################################################
 allSimInputOutput %>%
     filter(paraCombo != "mRNAconstant") %>%
@@ -101,20 +390,21 @@ allSimInputOutput %>%
               strip.text.y = element_text(size=10))
 
 
-allSimInputOutput %>%
-        filter(paraCombo!="mRNAconstant") %>%
-        ggplot(aes(x=mRNAabundance, y=RMMC)) +
-        geom_point(size = 0.2) +
-        facet_grid(dc~r, labeller=labeller(dc=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="Co-trns 0%"), r=c("0"="Ribo prot indx = 0", "0.1"="0.1", "0.4"="0.4", "1"="1"), label_parsed)) + 
-        labs(#title = "Fig S1: mRNA counts when varying are laregely equal to when they are constant \nafter scaling the mRNA synthesis rates", 
-             x="mRNA abundance",
-             y="relative mean mRNA count") +
-        #scale_y_continuous() +
-        scale_x_log10() +
-        theme_bw() +
-        theme(text=element_text(size=13), 
-              legend.title = element_blank(), 
-              legend.position = "bottom")
+allSimInputOutput%>%
+  filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo!="mRNAconstant") %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMMC, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  # geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput%>%filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo=="dc_1_r_0")%>%select(RMMDR))), na.rm = TRUE)), color="red", linetype="dashed") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean mRNA count") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome\nprot index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "none"
+  )
   
 
 allSimInputOutput %>%
@@ -131,32 +421,9 @@ allSimInputOutput %>%
 
 
 
-Fig S2.
-```{r}
-allSimInputOutput %>%
-    filter(paraCombo == "dc_1_r_0", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
-    ggplot(aes(x = MMC, y = MVMC, color = paraCombo)) +
-    geom_point(size = 0.5) +
-    geom_abline(linetype = "dashed") +
-    theme_bw() +
-    theme(text = element_text(size = 13),
-              legend.position = "none",
-              strip.text = element_text(color = "white"),  # can't use element_blank() here because it gives error when p1+p2
-              plot.margin = margin(r = 0, unit = "pt"),
-              panel.grid = element_blank()) +
-          labs(x = 'Mean of mRNA count',
-               y = 'Mean of variance in mRNA count') +
-          scale_color_manual(name =  "", labels =  c("dc_1_r_0" =  "Co-trans 100% RiboProtect 0"), values = c("#1F78B4")) +
-          geom_smooth(method =  "lm") +
-          stat_cor(aes(label =  paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size =  5) +
-          scale_x_log10() +
-          scale_y_log10()
-```
-
-
-Fig. S3
-```{r fig.width =  10}
-allSimInputOutput %>%
+Fig. was S3, now S2
+```{r fig.height = 6, fig.width =  10}
+figureS2 <- allSimInputOutput %>%
   filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
   ggplot(aes(x = MMC, y = MVMC)) +
   geom_point(size = 0.5) +
@@ -169,18 +436,22 @@ allSimInputOutput %>%
             panel.grid = element_blank()
     ) +
       labs(x = 'Mean of mRNA count',
-           y = 'Mean of variance in mRNA count') +
+           y = 'Variance of mRNA count') +
       geom_smooth(method = "lm") +
       stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size = 5) +
       scale_x_log10() +
       scale_y_log10()
+
+figureS2
+write_rds(figureS2, "../figures/figureS2.rds")
+
 ```
 
 
 
 
-Fig S4: Sequence features correlate with the fano factor of protein synthesis rates for mRNA constant
-```{r fig.width = 8, fig.height = 3}
+was Fig S4, now S3: Sequence features correlate with the fano factor of protein synthesis rates for mRNA constant
+```{r fig.height = 3, fig.width = 8}
 plot_fun1 <- function(var1, var2){ allSimInputOutput%>%  #var1:"MeanProteinSynRate".. var2:"mRNAconstant", "dc_1_r_0"
   filter(paraCombo == var2, mRNADecRateNeymotin_sec != 0) %>%
   select(ORF, MPSR, MVPS, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
@@ -204,13 +475,16 @@ plot_fun1 <- function(var1, var2){ allSimInputOutput%>%  #var1:"MeanProteinSynRa
 )
 }
 
-plot_fun1("fano_protSynRate", "mRNAconstant")
+figureS3 <- plot_fun1("fano_protSynRate", "mRNAconstant")
+
+figureS3
+write_rds(figureS3, "../figures/figureS3.rds")
 ```
 
-Fig S5. 
-```{r fig.height = 5, fig.width = 7}
+Was Fig S5, now S4. 
+```{r fig.height = 4, fig.width = 6}
 # MMDP = mRNAs marked for degradation proportion among mean total mRNA
-allSimInputOutput %>%
+figureS4 <- allSimInputOutput %>%
     filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0) %>%
     ggplot(aes(x = MMDP, y = RMPSR)) +
     geom_point(size = 0.1) +
@@ -224,11 +498,42 @@ allSimInputOutput %>%
     theme_bw() +
     theme(text=element_text(size = 13))
 
+figureS4
+write_rds(figureS4, "../figures/figureS4.rds")
+
 ```
+Fig. S5
+```{r fig.height = 4, fig.width = 6}
+figureS5 <- allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0) %>% 
+    select("ORF", "CVPS", "CVMC", "paraCombo") %>% #remove the gene with the 450min HL
+    ggplot(aes(x=CVMC, y=CVPS, colour=paraCombo)) +
+    geom_point(size = 0.5) +
+    geom_abline(linetype="dashed") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x ="CV for mRNA count per min",
+             y = "CV for protein synthesis rate") +
+        #scale_color_discrete(name="",labels=c("Co-trans 100% RiboProtect 0")) +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.5, label.y.npc = 0.3, size=5) +
+        scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
+        scale_y_log10() +
+        scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("dc_1_r_0" = "black"))
+
+figureS5
+write_rds(figureS5, "../figures/figureS5.rds")
+```
+
 
 Fig S6: relative CV = CV of the protein synthesis rate/CV of the mRNA count
 ```{r fig.height = 3, fig.width = 8}
-allSimInputOutput %>%
+figureS6 <- allSimInputOutput %>%
   filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YCR024C-B") %>%    #"YCR024C-B" is an outlier whose relCV = 23
   mutate(relCV = CVPS/CVMC) %>%
   select(ORF, relCV, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
@@ -248,11 +553,14 @@ allSimInputOutput %>%
             strip.background = element_blank(),  
             strip.placement = "outside")     #to put the strip labels below x-axis
 
+figureS6
+write_rds(figureS6, "../figures/figureS6.rds")
+
 ```
 
 Fig. S7: 
-```{r fig.width = 7}
-allSimInputOutput %>%
+```{r fig.height = 4, fig.width = 7}
+figureS7 <- allSimInputOutput %>%
     filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
     select(MTT, MMDP, geneLength_codon, RMMDR) %>%
     `colnames<-` (c("MeanTransTime", "mRNAMarkdDecProp", "geneLength_codon", "RelativeDecRate")) %>%
@@ -272,6 +580,10 @@ allSimInputOutput %>%
           strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
           strip.background = element_blank(),  
           strip.placement = "outside")
+
+figureS7
+write_rds(figureS7, "../figures/figureS7.rds")
+###################################################
 
 allSimInputOutput %>%
     filter(paraCombo == "dc_1_r_1", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A",ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
@@ -364,8 +676,8 @@ allSimInputOutput %>%
 
 
 Fig. S8
-```{r fig.width = 7}
-allSimInputOutput %>%
+```{r fig.height = 4, fig.width = 7}
+figureS8 <- allSimInputOutput %>%
     filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
     select(RMTE, MTT, MMDP, geneLength_codon, RMMDR) %>%
     `colnames<-` (c("RelMeanTE", "MeanTransTime", "mRNAMarkdDecProp", "geneLength_codon", "RelativeDecRate")) %>%
@@ -386,6 +698,11 @@ allSimInputOutput %>%
         strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
         strip.background = element_blank(),  
         strip.placement = "outside")
+
+figureS8
+write_rds(figureS8, "../figures/figureS8.rds")
+
+#############################################
 
 allSimInputOutput %>%
     filter(paraCombo == "dc_0.8_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
@@ -562,7 +879,7 @@ allSimInputOutput %>%
         strip.background = element_blank(),  
         strip.placement = "outside")
 
-
+# MMDP = mRNAs marked for degradation proportion
 allSimInputOutput %>%
     filter(paraCombo == "dc_0.2_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
     select(MMDP, RMMDR) %>%
@@ -584,6 +901,98 @@ allSimInputOutput %>%
 ```
 
 Fig. S9
+```{r fig.height = 7, fig.width = 10}
+figureS9 <- allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B", dc != 0) %>%
+  #select(RMTE, MTT, MMDP, geneLength_codon, RMMDR) %>%
+  ggplot(aes(x = MMDP, y = RMTE)) +
+  geom_point(size = 0.1) +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "Co-trns 20%"), r = c("0" = "Ribo prot indx  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Proportions of mRNAs undergoing CMD for all genes',
+           y = 'Relative mean translation efficiencies') +
+      geom_smooth(method = "lm") +
+      stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.2, label.y.npc = 0.4, size = 5) +
+      scale_x_log10() +
+      scale_y_log10()
+
+figureS9
+write_rds(figureS9, "../figures/figureS9.rds")
+
+##############################################################
+
+allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B", , r==0|r==1, dc==0.2|dc==1) %>%
+  #select(RMTE, MTT, MMDP, geneLength_codon, RMMDR) %>%
+  ggplot(aes(x = MMDP, y = RMTE)) +
+  geom_point(size = 0.1) +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "Co-trns 20%"), r = c("0" = "Ribo prot indx  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Proportions of mRNAs undergoing CMD for all genes',
+           y = 'Relative mean translation efficiencies') +
+      geom_smooth(method = "lm") +
+      stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.2, label.y.npc = 0.4, size = 5) +
+      scale_x_log10() +
+      scale_y_log10()
+```
+
+Fig. S10
+```{r fig.height = 7, fig.width = 10}
+figureS10 <- allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B") %>%
+  #select(RMTE, MTT, MMDP, geneLength_codon, RMMDR) %>%
+  ggplot(aes(x = RMMDR, y = RMTE)) +
+  geom_point(size = 0.1) +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "Co-trns 0%"), r = c("0" = "Ribo prot indx  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Relative mRNA decay rates',
+           y = 'Relative mean translation efficiencies') +
+      geom_smooth(method = "lm") +
+      stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.2, label.y.npc = 0.4, size = 5) +
+      scale_x_log10() +
+      scale_y_log10()
+
+figureS10
+write_rds(figureS10, "../figures/figureS10.rds")
+#########################################################
+
+allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YGR169C-A", ORF != "YLR106C", ORF != "YCR024C-B", r==0|r==1, dc==0|dc==1) %>%
+  #select(RMTE, MTT, MMDP, geneLength_codon, RMMDR) %>%
+  ggplot(aes(x = RMMDR, y = RMTE)) +
+  geom_point(size = 0.1) +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "Co-trns 0%"), r = c("0" = "Ribo prot indx  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Relative mRNA decay rates',
+           y = 'Relative mean translation efficiencies') +
+      geom_smooth(method = "lm") +
+      stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.2, label.y.npc = 0.4, size = 5) +
+      scale_x_log10() +
+      scale_y_log10()
+```
+
+
+was Fig. S9, maybe should not use it coz the vline calculated from its input decay rate may not be accurate.
 ```{r}
 lifetimeDistri<- function(genevec){
     dfplot <- cbind(dc.r.df[c(2:5, 22:25), ], data.frame(matrix(NA, ncol = 5000, nrow = 8*3))) %>%
@@ -621,6 +1030,91 @@ lifetimeDistri(c("YLR106C", "YKR054C", "YHR099W")) # longest genes
 lifetimeDistri(c("YAR002C-A", "YBL050W", "YBR003W"))
 
 ```
+
+```{r fig.height = 5, fig.width=12}
+allSimInputOutput %>%
+    filter(paraCombo == "dc_0_r_0", mRNADecRateNeymotin_sec != 0, mRNAabundance>1, ORF!="YER053C-A", ORF!="YLR106C") %>%  #remove the gene with HL=450min, also an outlier gene "YLR106C" with RMTE==0.6
+    select(ORF, paraCombo, RMTE, mRNAabundance_log10, iniProb_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+    `colnames<-`(c("ORF", "paraCombo", "RMTE", "log(mRNAabundance)", "log(IniProb)", "log(DecRate)", "CAI", "log(Length)")) %>%
+    pivot_longer(cols = -c(RMTE, paraCombo, ORF), names_to = "feature", values_to = "featureVal") %>%
+    ggplot(aes(x=featureVal, y=RMTE, color=paraCombo)) +
+    geom_point(size=0.5) +
+    facet_wrap(~feature, scales = "free", nrow=1, strip.position = "bottom") +
+    theme_bw() +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              strip.text = element_text(color="black", size=rel(1.2)),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank(),
+              strip.background = element_blank(),  
+              strip.placement = "outside"     #to put the strip labels below x-axis
+      ) +
+        labs(x = "",
+             y = "Relative mean translation efficiency",
+             title = "dc_0_r_0") +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.2, size=5) +
+        scale_color_manual(name="", labels=c(""), values = c("dc_1_r_0" = "#1F78B4"))
+
+
+
+allSimInputOutput %>%
+    filter(paraCombo == "dc_0_r_1", mRNADecRateNeymotin_sec != 0, mRNAabundance>1, ORF!="YER053C-A", ORF!="YLR106C") %>%  #remove the gene with HL=450min, also an outlier gene "YLR106C" with RMTE==0.6
+    select(ORF, paraCombo, RMTE, mRNAabundance_log10, iniProb_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+    `colnames<-`(c("ORF", "paraCombo", "RMTE", "log(mRNAabundance)", "log(IniProb)", "log(DecRate)", "CAI", "log(Length)")) %>%
+    pivot_longer(cols = -c(RMTE, paraCombo, ORF), names_to = "feature", values_to = "featureVal") %>%
+    ggplot(aes(x=featureVal, y=RMTE, color=paraCombo)) +
+    geom_point(size=0.5) +
+    facet_wrap(~feature, scales = "free", nrow=1, strip.position = "bottom") +
+    theme_bw() +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              strip.text = element_text(color="black", size=rel(1.2)),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank(),
+              strip.background = element_blank(),  
+              strip.placement = "outside"     #to put the strip labels below x-axis
+      ) +
+        labs(x = "",
+             y = "Relative mean translation efficiency",
+             title = "dc_0_r_1") +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.2, size=5) +
+        scale_color_manual(name="", labels=c(""), values = c("dc_1_r_0" = "#1F78B4"))
+
+
+
+allSimInputOutput %>%
+    filter(paraCombo == "dc_1_r_1", mRNADecRateNeymotin_sec != 0, mRNAabundance>1, ORF!="YER053C-A", ORF!="YLR106C") %>%  #remove the gene with HL=450min, also an outlier gene "YLR106C" with RMTE==0.6
+    select(ORF, paraCombo, RMTE, mRNAabundance_log10, iniProb_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+    `colnames<-`(c("ORF", "paraCombo", "RMTE", "log(mRNAabundance)", "log(IniProb)", "log(DecRate)", "CAI", "log(Length)")) %>%
+    pivot_longer(cols = -c(RMTE, paraCombo, ORF), names_to = "feature", values_to = "featureVal") %>%
+    ggplot(aes(x=featureVal, y=RMTE, color=paraCombo)) +
+    geom_point(size=0.5) +
+    facet_wrap(~feature, scales = "free", nrow=1, strip.position = "bottom") +
+    theme_bw() +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              strip.text = element_text(color="black", size=rel(1.2)),  # can't use element_blank() here because it gives error when p1+p2
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank(),
+              strip.background = element_blank(),  
+              strip.placement = "outside"     #to put the strip labels below x-axis
+      ) +
+        labs(x = "",
+             y = "Relative mean translation efficiency",
+             title = "dc_1_r_1") +
+        geom_smooth(method="lm") +
+        stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.2, size=5) +
+        scale_color_manual(name="", labels=c(""), values = c("dc_1_r_0" = "#1F78B4"))
+
+
+```
+
+
 
 
 ```{r}
@@ -666,24 +1160,22 @@ Supp Fig 2c: Output decay rates respond to scaled synthesis rates, therefore its
 
 Supp Fig 2d: Output decay rates for short genes are much less affected by different \nco-translational decay than long genes
 ```{r fig.height=6, fig.width=8}
-allSimInputOutput_trial <- read_feather(paste0(basefolder, expID, "/externalData/trial_allSimInputOutput.feather"))
+allSimInputOutput_trial <- read_feather("../../../exp0/externalData/exp11_outcomeAll.feather")
 tmp <- allSimInputOutput_trial %>% 
   filter(combo != "mRNAconstant", w != 0.01, w != 0.05, w != 0.2) %>% 
   select(NMMC, combo, ORF, r, w) %>% # NMMC in trial = RMMC in exp0, "normalized" VS "relative"
   mutate(dc=1-as.numeric(r)) %>%
   select(-r) %>% #delete the original column named "r", in trial data the r means CMD levels, and w means ribosome protection index
-  dplyr::rename("r"="w", "trialCombo"="combo", "RMMCtrial"="NMMC") %>% # change the original col named "w" into "r", b/c "r" in exp0 means ribosome protection index
-  mutate(combo=paste0("dc_", dc, "_r_", r)) %>%
-  select(-trialCombo, -dc, -r)
+  dplyr::rename("r"="w", "paraCombo"="combo", "RMMCtrial"="NMMC") %>% # change the original col named "w" into "r", b/c "r" in exp0 means ribosome protection index
+  mutate(paraCombo=paste0("dc_", dc, "_r_", r)) %>%
+  select(-dc, -r)
   
-
-combinedRMMC <- (l %>%
-    filter(combo != "mRNAconstant") %>%
-    left_join(., tmp, by = c("combo"="combo", "ORF"="ORF"))) %>%
-    select("combo", "RMMC", "RMMCtrial", "dc", "r") %>%
-    dplyr::rename("AfterScaling"="RMMC", "BeforeScaling"="RMMCtrial")
     
-sup1 <- combinedRMMC %>%
+sup1 <- (allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant") %>%
+    left_join(., tmp, by = c("paraCombo"="paraCombo", "ORF"="ORF"))) %>%
+    select("paraCombo", "RMMC", "RMMCtrial", "dc", "r") %>%
+    dplyr::rename("AfterScaling"="RMMC", "BeforeScaling"="RMMCtrial") %>%
     pivot_longer(names_to = "key", values_to = "RMMCvalue", cols = 2:3) %>%
     ggplot(aes(x=RMMCvalue, color=key)) +
         geom_density() +
@@ -705,11 +1197,11 @@ outdf <- tibble(matrix(NA, ncol=nrow(dc.r.df)-1, nrow=4839))
 
 for (i in 1:(nrow(dc.r.df)-1)) 
 {
-    inf <- read.table(paste0(basefolder, expID, "/input/allGenesDecrEqualsSynrWithScaling_", dc.r.df$combo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec"))
+    inf <- read.table(paste0("../../simulations/simInput/allGenesDecrEqualsSynrWithScaling_", dc.r.df$paraCombo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec.tsv"))
     outdf[, i] <- inf[, 3]/(inf[, 4]*inf[, 2])
 }
 
-colnames(outdf) <- dc.r.df$combo[2:nrow(dc.r.df)]
+colnames(outdf) <- dc.r.df$paraCombo[2:nrow(dc.r.df)]
 
 sup2a <- outdf %>%
   pivot_longer(names_to = "paraCombo", values_to = "value", cols = 1:(nrow(dc.r.df)-1)) %>%
@@ -727,14 +1219,14 @@ sup2a <- outdf %>%
     scale_x_continuous(breaks = c(0.9, 1, 1.1, 1.3, 1.5))
 
 ############################################## plotting the (output decay rate)/(syn rate after scaling) for all genes for all dc/r paraCombos
-mmdrAllgeneAlldcr <- read_feather(paste0(basefolder, expID, "/analyses/featherFiles/mmdrAllgeneAlldcr.feather"))[, 2:nrow(dc.r.df)]
-mmcAllgeneAlldcr<- read_feather(paste0(basefolder, expID, "/analyses/featherFiles/mmcAllgeneAlldcr.feather"))[, 2:nrow(dc.r.df)]
+mmdrAllgeneAlldcr <- read_feather("../calculatedMetrics/mmdrAllgeneAlldcr.feather")[, 2:nrow(dc.r.df)]
+mmcAllgeneAlldcr<- read_feather("../calculatedMetrics/mmcAllgeneAlldcr.feather")[, 2:nrow(dc.r.df)]
 totdr <- mmdrAllgeneAlldcr*mmcAllgeneAlldcr
 
 totsynr <- tibble(matrix(NA, ncol=nrow(dc.r.df)-1, nrow=4839))
 for (i in 1:(nrow(dc.r.df)-1))
 {
-    inf <- read.table(paste0(basefolder, expID, "/input/allGenesDecrEqualsSynrWithScaling_", dc.r.df$paraCombo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec"))
+    inf <- read.table(paste0("../../simulations/simInput/allGenesDecrEqualsSynrWithScaling_", dc.r.df$paraCombo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec.tsv"))
     totsynr[, i] <- inf[, 3]
 }
 
@@ -764,10 +1256,9 @@ outdf <- tibble(matrix(NA, ncol=nrow(dc.r.df)-1, nrow=4839)) #contains all the t
 
 for (i in 1:(nrow(dc.r.df)-1))  # these 16 columns are all the same, all equal to simInputFeatures$mRNAabundance*simInputFeatures$mRNADecRateNeymotin_sec
 {
-    inf <- read.table(paste0(basefolder, expID, "/input/allGenesDecrEqualsSynrWithScaling_", dc.r.df$paraCombo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec"))
+    inf <- read.table(paste0("../../simulations/simInput/allGenesDecrEqualsSynrWithScaling_", dc.r.df$paraCombo[i+1], "_S.cer.mRNA.ini.abndc.syn.dec.tsv"))
     outdf[, i] <- (inf[, 4]*inf[, 2])
 }
-
 
 outdf <- totdr/outdf
 colnames(outdf) <- dc.r.df$paraCombo[2:nrow(dc.r.df)]
