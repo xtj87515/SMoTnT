@@ -1,4 +1,3 @@
-This repo contains the code and associated files for "", currently found on biorxiv (https://www.biorxiv.org/).
 
 ## Repo organization and simulation pipeline
 The root directory contains two folders: "experimentX (e.g. experiment1)" and "publicSimInput". "publicSimInput" contains input information that will be shared among the simulations for all experiments. Different experiments may differ in regard to the parameter settings for the source program, types of output metrics generated from the source program, types of analyses and so on. The folders are organized to allow for maximized user customization.
