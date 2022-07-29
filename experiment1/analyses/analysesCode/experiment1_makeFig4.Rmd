@@ -140,14 +140,14 @@ figure4c <- (allSimInputOutput %>%
 
 ```
 
-```{r fig.height = 8, fig.width=12}
+```{r fig.height = 6, fig.width=10}
 figure4 <- ((figure4a | figure4b) + plot_layout(widths = c(.6, .4))) /figure4c
 figure4 + 
   plot_annotation(
     title = "Figure 4",
     tag_levels = 'A') 
 
-ggsave(paste0(figureBaseFolder, "d_fig_4.png"), dpi=200, height = 8, width = 12)
+ggsave(paste0(figureBaseFolder, "d_fig_4.png"), dpi=200, height = 6, width = 10)
 
 ```
 

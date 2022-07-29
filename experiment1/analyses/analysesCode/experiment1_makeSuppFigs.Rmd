@@ -103,8 +103,8 @@ figS0_b <- allSimInputOutput %>%
               plot.margin = margin(r = 0, unit = "pt"),
               panel.grid = element_blank()
       ) +
-        labs(x = 'Variance of protein synthesis rate'~(min^-1),
-             y = 'Predicted variance of protein synthesis rate'~(min^-1)) +
+        labs(x = 'Variance of protein synthesis rate'~(min^-2),
+             y = 'Predicted variance of protein synthesis rate'~(min^-2)) +
         scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="mRNAvarying"), values = c("#1F78B4", "#FF7F00")) +
         geom_smooth(method="lm") +
         stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size=5) +
@@ -266,7 +266,10 @@ write_rds(figS0_h, "../figures/figS0_h.rds")
 ######################################################
 figS0_i <- allSimInputOutput %>%
     filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>%
+    #mutate(intCtrlOrNot = ifelse(mRNADecRateNeymotin_sec==0,"intCtrl","nonCtrl")) %>% 
+    #select(paraCombo, ORF, geneLength_codon, RMPSR, intCtrlOrNot) %>% 
     select(paraCombo, ORF, geneLength_codon, RMPSR) %>% 
+    #ggplot(aes(x = geneLength_codon, y = RMPSR, color = intCtrlOrNot)) +
     ggplot(aes(x = geneLength_codon, y = RMPSR)) +
     geom_point(size = 0.5) +
     #geom_abline(linetype="dashed") +
@@ -311,6 +314,55 @@ figS0_j <- allSimInputOutput %>%
 
 figS0_j
 write_rds(figS0_j, "../figures/figS0_j.rds")
+
+######################################################
+figS0_k <- allSimInputOutput %>%
+    filter(paraCombo!= "mRNAconstant") %>% 
+    select(dc, r, RMFR) %>% 
+    unique() %>% 
+    ggplot(aes(x = dc, y = RMFR, color = factor(r))) +
+    geom_point() +
+    geom_line() +
+    # theme_bw() +
+    # theme(text = element_text(size = 13),
+    #           legend.position = "top",
+    #           strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+    #           plot.margin = margin(r = 0, unit = "pt"),
+    #           panel.grid = element_blank()
+    #   ) +
+        labs(x = 'CMD levels',
+             y = 'Relative mean free ribosomes') +
+  scale_color_discrete(name = "Ribo protection index")
+
+figS0_k
+write_rds(figS0_k, "../figures/figS0_k.rds")
+
+
+######################################################
+figS0_l <- allSimInputOutput %>%
+  filter(paraCombo=="dc_0_r_1", ORF!="YER053C-A") %>% #remove the gene with the 450min HL
+  # filter(paraCombo=="dc_0_r_1", ORF!="YER053C-A", mRNADecRateNeymotin_sec==0) %>% 
+  # select("ORF", "RMPSR", "RMFR") %>% 
+  mutate(intCtrlOrNot = ifelse(mRNADecRateNeymotin_sec==0,"intCtrl","nonCtrl")) %>% 
+  select("ORF", "RMPSR", "intCtrlOrNot") %>% 
+  #select("ORF", "RMPSR") %>% 
+  ggplot() +
+  geom_density(aes(x=RMPSR, color = intCtrlOrNot)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+        legend.position = c(0.6, 0.6),
+        legend.background = element_blank(),
+        axis.ticks.y = element_blank(),
+        plot.margin = margin(r = 0, unit = "pt"),
+        panel.grid = element_blank()) +
+    labs(x = "Rel. mean protein synthesis rate") +
+    #scale_color_manual(values = c("RMVPS"="black")) +  
+    scale_color_manual(values = c("intCtrl"="blue", "nonCtrl"="black")) +  
+    scale_x_log10() +
+    geom_vline(xintercept = 1, linetype = "dashed") 
+
+figS0_l
+write_rds(figS0_l, "../figures/figS0_l.rds")
 ```
 
 

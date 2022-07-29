@@ -150,9 +150,10 @@ figure1d <- allSimInputOutput %>%
 #################################################################
 figure1e <- allSimInputOutput %>%
   filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A") %>% #remove the gene with the 450min HL
+  mutate(intCtrlOrNot = ifelse(mRNADecRateNeymotin_sec==0,"intCtrl","nonCtrl")) %>% 
   select("ORF", "RMPSR") %>% 
   ggplot() +
-  geom_density(aes(x=RMPSR)) +
+  geom_density(aes(x=RMPSR, color = intCtrlOrNot)) +
   theme_bw() +
   theme(text = element_text(size = 13),
         legend.position = c(0.6, 0.6),
@@ -161,7 +162,7 @@ figure1e <- allSimInputOutput %>%
         plot.margin = margin(r = 0, unit = "pt"),
         panel.grid = element_blank()) +
     labs(x = "Rel. mean protein synthesis rate") +
-    scale_color_manual(values = c("RMPSR"="black")) +  
+    scale_color_manual(values = c("RMVPS"="black")) +  
     scale_x_log10() +
     geom_vline(xintercept = 1, linetype = "dashed") 
 
@@ -179,7 +180,8 @@ figure1f <- allSimInputOutput %>%
         plot.margin = margin(r = 0, unit = "pt"),
         panel.grid = element_blank()) +
     labs(x = "Rel.variance in protein synthesis rates") +
-    scale_color_manual(values = c("RMVPS"="black")) +  
+    #scale_color_manual(values = c("RMVPS"="black")) +  
+    scale_color_manual(values = c("intCtrl"="blue", "nonCtrl"="black")) +  
     scale_x_log10() +
     geom_vline(xintercept = 3, linetype = "dashed") 
 

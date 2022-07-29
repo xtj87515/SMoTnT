@@ -267,27 +267,29 @@ calculate_gene_sp_mmc <- function(geneID, simOutputH5){
 
 ```{r}
 # mvmc = mean of the variance in mRNA count
-calculate_gene_sp_mvmc <- function(geneID, simOutputH5){    
+calculate_gene_sp_mvmc <- function(geneID, simOutputH5){
     # outvec has 25 elements. Each element is the mvmc for the 1 mRNAconstant + 24 different dc/r combos
-    outvec <- vector() 
-    
+    outvec <- vector()
+
     # current gene name out of the 4839 genes
     currentGene <- geneNames[geneID]
 
     mvmc_mRNAconstant <- 0  # the variance in mRNA count for mRNAconstant is 0
     outvec <- c(outvec, mvmc_mRNAconstant)
-    
+
     # loop through the dc/r parameter space, excluding mRNAconstant
-    for(i in 2:nrow(dc.r.df)){  
+    for(i in 2:nrow(dc.r.df)){
         mc_mRNAvarying <- h5read(simOutputH5, paste(currentGene, "gene_sp_mRNAcount_perMin", dc.r.df$paraCombo[i], sep = "/"))
         # get variance for each row(rep) and then get the mean for all reps
-        mvmc_mRNAvarying <- mean(apply(mc_mRNAvarying, 1, var, na.rm = TRUE))  
+        mvmc_mRNAvarying <- mean(apply(mc_mRNAvarying, 1, var, na.rm = TRUE))
         outvec <- c(outvec, mvmc_mRNAvarying)
     }
-    
+
     h5closeAll()
     return(outvec)
 }
+
+
 ```
 
 ```{r}
@@ -542,7 +544,7 @@ calculate_gene_sp_mvtbr <- function(geneID, simOutputH5){
 
 
 ```{r}
-# mtt = mean translation time (among all ribosomes for a gene)
+# mtt = mean translation time (among all ribosomes for a gene, in seconds)
 calculate_gene_sp_mtt <- function(geneID, simOutputH5){  
     # outvec has 25 elements. Each element is the mtt for the 1 mRNAconstant + 24 different dc/r combos
     outvec <- vector()

@@ -1,0 +1,202 @@
+---
+title: "Tongji thesis figures for Chapter 3: Results"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../thesisFigures/"
+```
+
+
+
+# figure 3.2.1 Mean translation time across different combinations of CMD levels and ribosome protection indices (excluding three outliers)
+```{r fig.height=5, fig.width=7}
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MTT < 600) %>% 
+  select(ORF, MTT, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=MTT, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Mean translation time (s)") +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A")%>%select(MTT))))), 
+             color="red", linetype="dashed") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_y_log10() +
+  scale_fill_discrete(name = "Ribosome protection") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "top",
+    legend.justification = "left"
+  )
+
+ggsave(paste0(figureBaseFolder,"figure3.2.1.png"), dpi=200, height = 5, width = 7)
+
+############################################ RMTT = MTT between mRNA varying/mRNA constant
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MTT < 600) %>% 
+  select(ORF, RMTT, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMTT, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation time (s)") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_y_log10() +
+  scale_fill_discrete(name = "Ribosome protection") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "top",
+    legend.justification = "left"
+  )
+
+############################################ compare the MTT distributions for dc_1_r_0 and mRNAconstant
+ks.test(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0") %>% pull(MTT),
+        allSimInputOutput %>% filter(paraCombo=="mRNAconstant") %>% pull(MTT))
+
+
+############################################
+allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  mutate(shortOrlong = ifelse(geneLength_codon>=512,"long","short")) %>% 
+  select(ORF, MTT, shortOrlong) %>%
+  group_by(shortOrlong) %>% 
+  summarise(MTT_mean = mean(MTT))
+
+allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  select(MTT, geneLength_codon) %>% 
+  mutate(riboTranslocationSpeed = geneLength_codon/MTT) %>% 
+  pull(riboTranslocationSpeed) %>% 
+  mean()
+  
+```
+```{r}
+allSimInputOutput %>%
+    filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>%
+    select(ORF, MTT, geneLength_codon, iniProb)
+
+allSimInputOutput %>%
+    filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MTT < 600) %>%
+    select(ORF, MTT, r, dc) %>% 
+    split(.$r) %>%    # compare all the red bars together, then green bars together..
+    map(function(x){
+      compare_means(MTT ~ dc, x, method = "anova")
+    })
+
+allSimInputOutput %>%
+    filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", MTT < 600) %>%
+    select(ORF, MTT, r, dc) %>% 
+    split(.$dc) %>%    # compare all the green bars together, then red bars together..
+    map(function(x){
+      compare_means(MTT ~ r, x, method = "anova")
+    })
+```
+
+```{r}
+simInputFeatures %>% 
+  ggplot(aes(x=geneLength_codon, y=mRNAabundance)) +
+  geom_point(size = 0.3) +
+  geom_smooth(method = "lm") +
+  stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.5, label.y.npc = 0.7, size = 4) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+# figure 3.2.2 correlation between mean translation time (MTT) and 5 seq features for dc_1_r_0 (excluding several genes whose log(initiation probability) > -4)
+```{r fig.height = 6, fig.width = 8}
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A") %>%
+  select(ORF, MTT, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+  filter(MTT<600, iniProb_log10>-4) %>%  # filter out the several outliers, filtering on iniProb b/c otherwise the regression line for that facet gets extended too much
+  `colnames<-`(paste0("",c("ORF", "MTT", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "varMeanRatio"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, MTT)) %>%
+  ggplot(aes(x = featureVals, y = MTT)) +
+    geom_point(size = 0.3) +
+    facet_wrap(~feature, scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.5, label.y.npc = 0.95, size = 4) +
+    labs(x = "",
+       y = "Mean translation times (s)") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+ggsave(paste0(figureBaseFolder,"figure3.2.2.png"), dpi=200, height = 6, width = 8)
+
+
+
+########################## same plot as above except for NOT filtering genes out based on iniProb
+
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A") %>%
+  select(ORF, MTT, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+  filter(MTT<600) %>%  # filter out the several outliers, filtering on iniProb b/c otherwise the regression line for that facet gets extended too much
+  `colnames<-`(paste0("",c("ORF", "MTT", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "varMeanRatio"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, MTT)) %>%
+  ggplot(aes(x = featureVals, y = MTT)) +
+    geom_point(size = 0.3) +
+    facet_wrap(~feature, scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.5, label.y.npc = 0.95, size = 4) +
+    labs(x = "",
+       y = "Mean translation times (s)") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+```
+
+
+# the correlation between MTT and the 5 seq features change over paraCombos, but the changes are very small because MTT itself didn't change much among all paraCombos. Not necessary to add this figure
+```{r fig.height = 4, fig.width = 8}
+allSimInputOutput%>%  
+    filter(mRNADecRateNeymotin_sec != 0, paraCombo!="mRNAconstant", MTT<600, ORF != "YER053C-A") %>%
+    select(ORF, MTT, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, paraCombo, dc, r) %>%
+    #filter(varMeanRatio>0.5) %>%  # filter out the 1 outlier %>% 
+    `colnames<-`(paste0("",c("ORF", "MTT", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "paraCombo", "dc", "r"))) %>% 
+    pivot_longer(names_to = "seqFeature", values_to = "featureVals", cols = 3:7) %>% 
+    group_by(paraCombo,seqFeature) %>% 
+    summarise(corrCoeff = cor(MTT, featureVals)) %>% 
+    left_join(dc.r.df, by = "paraCombo") %>% 
+    mutate(dc_fct = factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2","0"))) %>%
+    ungroup() %>% 
+    ggplot(aes(x = dc_fct, y = corrCoeff, color = r)) +
+    geom_point(size = 0.5) +
+    geom_line(aes(group = r)) +
+    facet_wrap(~seqFeature, scales = "free", nrow = 2, strip.position = "top") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+          strip.text = element_text(color = "black")) +  # can't use element_blank() here because it gives error when p1+p2
+    labs(x = "CMD levels", y = "Pearson's correlation coefficient") #corr. coeff. between CMD proportions and seq features
+
+```
+

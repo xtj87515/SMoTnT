@@ -1,0 +1,51 @@
+---
+title: "Tongji thesis figures for Chapter 3: Results"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../thesisFigures/"
+```
+
+
+# figure 3.4.1
+```{r fig.height = 5, fig.width = 7}
+allSimInputOutput %>%
+    filter(paraCombo!= "mRNAconstant") %>% 
+    select(dc, r, RMFR) %>% 
+    mutate(dc_fct = factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+    unique() %>% 
+    ggplot(aes(x = dc_fct, y = RMFR, color = factor(r))) +
+    geom_point() +
+    geom_line(aes(group=r)) +
+        labs(x = 'CMD levels',
+             y = 'Relative mean free ribosomes') +
+    scale_color_discrete(name = "Ribosome protection") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+          legend.position = "top",
+          legend.justification = "left")
+
+ggsave(paste0(figureBaseFolder,"figure3.4.1.png"), dpi=200, height = 5, width = 7)
+
+```
+
+
+
+

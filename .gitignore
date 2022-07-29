@@ -9,3 +9,5 @@ experiment*/analyses/calculatedMetrics/*.feather
 experiment*/analyses/externalData/*.feather
 experiment*/notForPublication/*
 experiment*/simulations/trialH5data/
+experiment*/analyses/thesisFigures/*
+experiment*/analyses/analysesCode/thesisFigures*

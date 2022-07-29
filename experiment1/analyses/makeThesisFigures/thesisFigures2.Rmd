@@ -1,0 +1,326 @@
+---
+title: "Tongji thesis figures for Chapter 2: Methoods"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../thesisFigures/"
+```
+
+
+
+# Figure 2.1 mRNA abuandance distribution
+```{r fig.height=4, fig.width=7}
+simInputFeatures %>%
+    ggplot(aes(x=mRNAabundance)) +
+    geom_histogram(bins=50, color = "white", fill = "#1F78B4") +
+    theme_classic() +
+    annotate(geom="text", x=90, y=500, label="  Min       Max      Median     Mean\n1       1283          4          12",
+              color="black",family = "Arial", size = 4) +
+    labs(x="mRNA abundance for 4839 yeast genes", y = "count") +
+    scale_x_log10() +
+    scale_y_log10() +
+    theme(text=element_text(size=13))
+
+ggsave(paste0(figureBaseFolder,"figure2.1.png"), dpi=200, height = 4, width = 7)
+
+```
+
+# Figure 2.2 Gene lengths distribution
+```{r fig.height=4, fig.width=7}
+simInputFeatures %>%
+    ggplot(aes(x=geneLength_codon)) +
+    geom_histogram(bins=50, color = "white", fill = "#1F78B4") +
+    theme_classic() +
+    annotate(geom="text", x=2500, y=300, label="Min    Max   Median  Mean\n25    4910    427    512",
+              color="black",family = "Arial", size = 4) +
+    labs(x="Gene length (a.a) for 4839 yeast genes", y = "count") +
+    scale_x_log10() +
+    #scale_y_log10() +
+    theme(text=element_text(size=13))
+
+ggsave(paste0(figureBaseFolder,"figure2.2.png"), dpi=200, height = 4, width = 7)
+
+```
+
+
+# Figure 2.3 Gene initiation probabilities distribution
+```{r fig.height=4, fig.width=7}
+simInputFeatures %>%
+    ggplot(aes(x=iniProb)) +
+    geom_histogram(bins=50, color = "white", fill = "#1F78B4") +
+    theme_classic() +
+    annotate(geom="text", x=0.00001, y=350, label="Min       Max     Median     Mean\n7.3e-07    0.01     0.001   0.0012", color="black",family = "Arial", size = 4) +
+    labs(x="Initiation probabilities for 4839 yeast genes", y = "count") +
+    scale_x_log10() +
+    #scale_y_log10() +
+    theme(text=element_text(size=13))
+
+ggsave(paste0(figureBaseFolder,"figure2.3.png"), dpi=200, height = 4, width = 7)
+
+
+```
+
+
+
+# Figure 2.4 Correlation plot for the mRNA degradation rates measured by different groups and methods
+```{r fig.height=6,fig.width=6}
+library(corrplot)
+library(readxl)
+
+# read only the half life data from the 8 data sets
+neymotinDecRateData <- as_tibble(read_excel("../externalData/neymotin2016DecayRateData.xlsx")[,20:27])
+neymotinDecRateData <- apply(neymotinDecRateData, 2, as.numeric)
+
+M <- cor(neymotinDecRateData, use = "pairwise.complete.obs")
+corrplot(M, method = "circle")
+
+png(file = paste0(figureBaseFolder,"figure2.6.png"), width = 6, height = 6, units = "in", res = 200)
+corrplot(M, method = "circle")
+dev.off()
+
+# ggsave(paste0(figureBaseFolder,"figure2.4.png"), type = "cairo", dpi=200, height = 6, width = 6)
+```
+
+
+# Figure 2.5 Gene half-lives distribution
+```{r fig.height=4, fig.width=7}
+simInputFeatures %>%
+    filter(mRNAhalfLife_min!=0, mRNAhalfLife_min<450) %>% 
+    ggplot(aes(x=mRNAhalfLife_min)) +
+    geom_histogram(bins=50, color = "white", fill = "#1F78B4") +
+    theme_classic() +
+    annotate(geom="text", x=30, y=300, label="Min  Max   Median   Mean\n1.7     57.3    12.2    13.2",
+              color="black",family = "Arial", size = 4) +
+    labs(x="Half life (min) for 4808 yeast genes", y = "count") +
+    scale_x_log10() +
+    # scale_y_log10() +
+    theme(text=element_text(size=13))
+
+ggsave(paste0(figureBaseFolder,"figure2.5.png"), dpi=200, height = 4, width = 7)
+```
+
+# Figure 2.6 Exponential-current weights
+```{r fig.height=4, fig.width=7}
+fun0 <- function(x) exp(0*x)
+fun3 <- function(x) exp(-0.1*x)
+fun7 <- function(x) exp(-0.4*x)
+#fun8 <- function(x) exp(-0.6*x)
+fun9 <- function(x) exp(-x)
+
+
+x<-seq(0,12)
+
+#df <- data.frame(cbind(x,unlist(lapply(x,fun1)),unlist(lapply(x,fun2)),unlist(lapply(x,fun3)),unlist(lapply(x,fun4)),unlist(lapply(x,fun5))),unlist(lapply(x,fun6)),unlist(lapply(x,fun7)),unlist(lapply(x,fun8)),unlist(lapply(x,fun9)))
+
+df <- data.frame(cbind(x,unlist(lapply(x,fun0)),unlist(lapply(x,fun3)),unlist(lapply(x,fun7)),unlist(lapply(x,fun9))))
+
+colnames(df) <-c("numBoundRibo","0","0.1","0.4","1")
+
+
+df %>%
+    gather(weightsGTBR,decProbability,-numBoundRibo) %>%
+    ggplot(aes(x=numBoundRibo,y=decProbability,color=weightsGTBR)) +
+    geom_line() +
+    theme_bw() +
+    theme(legend.position = "right") +
+    labs(x="Number of bound ribosomes",
+         y="Decay probability for individual mRNAs",
+         color="Ribosome\nprotection\nindex",
+         title="Exponential")
+    
+ggsave(paste0(figureBaseFolder,"figure2.6.png"), dpi=200, height = 4, width = 7)
+
+```
+
+# Figure 2.7 exponential- original weights
+```{r fig.height=4, fig.width=7}
+fun0 <- function(x) exp(0*x)
+fun1 <- function(x) exp(-0.01*x)
+fun2 <- function(x) exp(-0.05*x)
+fun3 <- function(x) exp(-0.1*x)
+#fun4 <- function(x) exp(-0.15*x)
+fun5 <- function(x) exp(-0.2*x)
+#fun6 <- function(x) exp(-0.3*x)
+fun7 <- function(x) exp(-0.4*x)
+#fun8 <- function(x) exp(-0.6*x)
+fun9 <- function(x) exp(-x)
+
+
+x<-seq(0,12)
+
+df <- data.frame(cbind(x,unlist(lapply(x,fun0)),unlist(lapply(x,fun1)),unlist(lapply(x,fun2)),unlist(lapply(x,fun3)),unlist(lapply(x,fun5))),unlist(lapply(x,fun7)),unlist(lapply(x,fun9)))
+
+colnames(df) <-c("numBoundRibo","0","0.01","0.05","0.1","0.2","0.4","1")
+
+df %>%
+    gather(weightsGTBR,decProbability,-numBoundRibo) %>%
+    ggplot(aes(x=numBoundRibo,y=decProbability,color=weightsGTBR)) +
+    geom_line() +
+    theme_bw() +
+    theme(legend.position = "right") +
+    labs(x="Number of bound ribosomes",
+         y="Decay probability for individual mRNAs",
+         color="Ribosome\nprotection\nindex",
+         title="Exponential")
+  
+ggsave(paste0(figureBaseFolder,"figure2.7.png"), dpi=200, height = 4, width = 7)
+
+```
+
+# Figure 2.8 Linear equations
+```{r fig.height=4, fig.width=7}
+fun1 <- function(x) 1-0*x
+fun2 <- function(x) 1-0.04*x
+fun3 <- function(x) 1-0.08*x
+fun4 <- function(x) 1-0.12*x
+fun5 <- function(x) 1-0.16*x
+fun6 <- function(x) 1-0.2*x
+
+
+x<-seq(0,4)
+
+df <- data.frame(cbind(c(x,5:12),
+                       c(unlist(lapply(x,fun1)),rep(fun1(4),8)),
+                       c(unlist(lapply(x,fun2)),rep(fun2(4),8)),
+                       c(unlist(lapply(x,fun3)),rep(fun3(4),8)),
+                       c(unlist(lapply(x,fun4)),rep(fun4(4),8)),
+                       c(unlist(lapply(x,fun5)),rep(fun5(4),8)),
+                       c(unlist(lapply(x,fun6)),rep(fun6(4),8))))
+
+colnames(df) <-c("numBoundRibo","0","0.04","0.08","0.12","0.16","0.2")
+
+df %>%
+    gather(weightsGTBR,decProbability,-numBoundRibo) %>%
+    ggplot(aes(x=numBoundRibo,y=decProbability,color=weightsGTBR)) +
+    geom_line() +
+    theme_bw() +
+    theme(legend.position = "right") +
+    labs(x="Number of bound ribosomes",
+     y="Decay probability for individual mRNAs",
+     color="Ribosome\nprotection\nindex",
+     title="Linear") +
+    ylim(0,1)
+
+ggsave(paste0(figureBaseFolder,"figure2.8.png"), dpi=200, height = 4, width = 7)
+
+```
+
+# Figure 2.9 mRNA abundances justification
+```{r fig.height = 6, fig.width = 8}
+trial_mRNAcount <- read_feather("../../simulations/trialmRNAcountData/trial_mRNAcount.feather")
+trial_mRNAcount
+
+allSimInputOutput %>%
+    left_join(., trial_mRNAcount[,c("paraCombo","ORF","trialRMMC")], by = c("paraCombo"="paraCombo", "ORF"="ORF")) %>%
+    filter(paraCombo != "mRNAconstant") %>%
+    select(paraCombo, RMMC, trialRMMC, dc, r) %>%
+    `colnames<-`(c("paraCombo", "AfterScaling", "BeforeScaling", "dc", "r")) %>%
+    pivot_longer(names_to = "key", values_to = "RMMCvalue", cols = 2:3) %>%
+    ggplot(aes(x=RMMCvalue, color=key)) +
+        geom_density() +
+        facet_grid(dc~r, labeller=labeller(dc=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="CMD 0%"), r=c("0"="Ribosome protection = 0", "0.1"="0.1", "0.4"="0.4", "1"="1"), label_parsed)) + 
+        labs(x="Relative mean mRNA count") +
+        scale_y_continuous() +
+        theme_bw() +
+        theme(text=element_text(size=13), 
+              legend.title = element_blank(), 
+              legend.position = "top",
+              legend.justification = "left") +
+        scale_color_manual(values=c("red", "#1F78B4"))
+
+ggsave(paste0(figureBaseFolder,"figure2.9.png"), dpi=200, height = 6, width = 8)
+
+```
+
+
+# Figure 2.10, model validation for mRNA constant
+```{r fig.height=4, fig.width=7}
+weinbergData <- read_tsv("../externalData/weinberg_synthesis.txt")
+
+allSimInputOutput %>% 
+  filter(paraCombo == "mRNAconstant") %>% 
+  select(ORF, paraCombo, MPSR, dc, r) %>%
+  left_join(weinbergData[, c("ORF", "S")], by = "ORF") %>%
+  mutate(S_perMin=S*60,
+         newcombo=factor(paraCombo, levels=dc.r.df$paraCombo[2:25])) %>%
+  ggplot(aes(x=MPSR, y=S_perMin)) +
+    geom_abline(linetype="dashed") +
+    geom_point(size = 0.6) +
+    geom_smooth(method="lm") +
+    stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.1, label.y.npc = 0.7, size=5) +
+    scale_x_log10() +
+    scale_y_log10() +
+    theme_bw() +
+    labs(x="Mean protein synthesis rates for mRNA constant simulations",
+         y="Protein synthesis rate estimates\n (Weinberg et al 2016)")
+
+ggsave(paste0(figureBaseFolder,"figure2.10.png"), dpi=200, height = 4, width = 7)
+```
+
+
+# Figure 2.11, model validation for mRNA varying
+```{r fig.height=6, fig.width=9}
+allSimInputOutput %>% 
+  filter(paraCombo != "mRNAconstant") %>% 
+  select(ORF, paraCombo, MPSR, dc, r) %>%
+  left_join(weinbergData[, c("ORF", "S")], by = "ORF") %>%
+  mutate(S_perMin=S*60) %>%
+  ggplot(aes(x=MPSR, y=S_perMin)) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    geom_abline(linetype="dashed") +
+    geom_point(size = 0.4) +
+    geom_smooth(method="lm") +
+    stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.05, label.y.npc = 0.8, size = 5) +
+    scale_x_log10() +
+    scale_y_log10() +
+    theme_bw() +
+    labs(x="Mean protein synthesis rates for mRNA varying simulations",
+         y="Protein synthesis rate estimates by Weinberg et al 2016") +
+    theme(text = element_text(size = 13))
+
+ggsave(paste0(figureBaseFolder,"figure2.11.png"), dpi=200, height = 6, width = 9)
+
+```
+
+# figure 
+```{r fig.height = 5, fig.width = 8}
+allSimInputOutput%>%
+  filter(ORF!="YER053C-A", mRNADecRateNeymotin_sec!=0, paraCombo!="mRNAconstant") %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMMC, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  geom_hline(yintercept = 1.00, linetype = "dashed", color = "red") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean mRNA count") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome protection") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "top",
+    legend.justification = "left"
+  )
+
+ggsave(paste0(figureBaseFolder,"figure2.12.png"), dpi=200, height = 5, width = 8)
+
+```
+
+
+

@@ -20,7 +20,7 @@ trial_mRNAcount
 ```
 
 
-### The scaled mRNA synthesis rates are calculated from previous trial simulations (exp11), based on both the synthesis rates and simulated mRNA count for the trial runs (exp11).
+### The scaled mRNA synthesis rates are calculated from previous trial simulations (exp11), based on both the synthesis rates and simulated mRNA count for the trial runs (exp11). The mRNA synthesis rates for trial simulations are solely calculated as mRNA decay rate*initial mRNA abundance.
 ```{r, include = FALSE}
 # This file below ("trial_allGenesDecrEqualsSynrWithScaling_dc_1_r_0_S.cer.mRNA.ini.abndc.syn.dec.tsv") was copied from "exp0/utilities/prepFiles/exp11_allGenesDecrEqualsSynrWithScaling_S.cer.mRNA.abndc.ini.syn.dec". We will use the mRNA synthesis rates contained in it as a baseline to adjust the scaled mRNA synthesis rates for different dc/r combos. This will generate an additional 24-1=23 input files that contain the mRNA synthesis/degradation rates for the simulations. 
 trialDecSynFile <- read_tsv("trial_allGenesDecrEqualsSynrWithScaling_S.cer.mRNA.ini.abndc.syn.dec.tsv", col_names = FALSE)

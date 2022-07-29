@@ -98,7 +98,7 @@ dtype3: 1st: dtype, 2nd: dc/r combo or mRNAconstant, higher dir(s) are specified
 dtype3 <- c("etimes",                   # 3rd: 61cid, 4th: 50rep X 2(# of events, mean), Elongation times of all codons
             "codon_sp_elngRibo_perMin", # 3rd: 61cid, 4th: 50rep X 720min, the number of elongatable ribosomes per codon type at each minute mark 
             "free_ribo_tRNA_perMin",    # 3rd: ribo + 41 tid, 4th: 50rep X 720min, the free ribosome number and free tRNA number per tRNA type at each minute mark
-            "avg_ribo_tRNA")            # 3rd: 50rep X 42(41ribo, 1tRNA), Average number of free ribosomes and tRNAs at equilibrium
+            "avg_ribo_tRNA")            # 3rd: 50rep X 42(1ribo, 41tRNA), Average number of free ribosomes and tRNAs at equilibrium
              
 ```
 

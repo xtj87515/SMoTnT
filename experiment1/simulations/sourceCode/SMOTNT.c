@@ -4,9 +4,9 @@
 /*
 To compile and run the code:
 
-gcc source/SMOTNT.c -g -lm -lgsl -lgslcblas -mtune=generic -O3 -o source/SMOTNT
+gcc sourceCode/SMOTNT.c -g -lm -lgsl -lgslcblas -mtune=generic -O3 -o sourceCode/SMOTNT
 
-./source/SMOTNT -Tt 1500 -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc 0.2 -r 0.4 -F ../publicInput/truncated_S.cer.genom -C ../publicInput/S.cer.tRNA -D input/allGenesDecrEqualsSynrWithScaling_dc_0.2_r_0.4_S.cer.mRNA.ini.abndc.syn.dec -s 16629 -O output/output.seed.16629_dc_0.2_r_0.4_allGenesDecrEqualsSynrScaling -p1 -p2 -p3 -p4 -p6 -p7 
+./sourceCode/SMOTNT -Tt 1500 -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc 0.2 -r 0.4 -F ../publicInput/truncated_S.cer.genom -C ../publicInput/S.cer.tRNA -D input/allGenesDecrEqualsSynrWithScaling_dc_0.2_r_0.4_S.cer.mRNA.ini.abndc.syn.dec -s 16629 -O output/output.seed.16629_dc_0.2_r_0.4_allGenesDecrEqualsSynrScaling -p1 -p2 -p3 -p4 -p6 -p7 
  
 
  
@@ -1097,7 +1097,7 @@ int main(int argc, char *argv[])
                     g_id = c1;
                     
                     coin = gsl_rng_uniform(r);  // Pick which way of decay will proceed: either the 5'-3' Xrn1 or the 3'-5' exosome pathway
-                    if(coin < (1-ratio_cotrans_decay))  // This is when the Xrn1 5'-3' immidiate decay is selected to proceed
+                    if(coin < (1-ratio_cotrans_decay))  // This is when the exosome 3'-5' immidiate decay is selected to proceed
                     {
                         // Below is to update the moments of mRNA life times for each gene, life time = death time(decayed, not just marked for decay)- birth time for any newly synthesized mRNAs after burn-in
                         if(t>=thresh_time && printOpt[6]==1 && mRNA[m_id].t_mbirth >= thresh_time)    // If this selected mRNA is not one of the original 60,000 mRNAs
@@ -1323,7 +1323,7 @@ int main(int argc, char *argv[])
                         decCount[c1]++;
                     }
 
-                    else   // This is when the exosome 3'-5' delayed decay is selected to proceed
+                    else   // This is when the Xrn1 5'-3' delayed decay is selected to proceed
                     {
                         // mRNA numbers and decay rate decreases immidiately, whether the selected mRNA is decayed immidiately or decayed later.
                         tot_mRNA--;

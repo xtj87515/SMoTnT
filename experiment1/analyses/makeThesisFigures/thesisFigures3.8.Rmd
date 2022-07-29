@@ -1,0 +1,612 @@
+---
+title: "Tongji thesis figures for Chapter 3: Results"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../thesisFigures/"
+```
+
+# preping figure 3.8.1
+```{r}
+# translation efficiency = protein produced per mRNA per minute = protein produced per min/real-time mRNA count per min
+TE_byTimeRep <- function(gName1, gName2, gName3)
+{
+    TE_ls <-lapply(c(gName1, gName2, gName3), function(x){
+        te_varying <- data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/dc_1_r_0"))/h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/dc_1_r_0"))))
+        te_constant <- data.frame(t(h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_countElng_perMin/mRNAconstant"))/h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/mRNAconstant"))))
+        return(tibble(rbind(te_varying, te_constant)))
+    })
+    #each tibble is 1440 X 50 reps, 1440 = 720min for each of dc_1_r_0 or ctrl
+    
+    teRepTime <- do.call(rbind, TE_ls)    # 4320 X 50, 4320=1440x3=(720x2)x3
+  
+    colnames(teRepTime) <- paste0("rep", 1:numTechReps)
+    
+    p1 <- teRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3), 
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3), 
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2))) %>%
+      pivot_longer(names_to = "reps", values_to = "transEffi", cols = 1:numTechReps) %>%
+      ggplot(aes(x=time, y= transEffi, color=dc.r.paraCombo)) + 
+      geom_line(alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "top",
+            legend.justification = "left",
+            strip.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+            ) +
+      labs(
+           x="Time(min)",
+           y='Translation efficiency'~(mRNA^-1 ~min^-1)) +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="100% CMD 0 ribosome protection"),  values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0), name="Protein synthesized per mRNA")  # remove the extra space on the axis
+
+    
+    p2 <- teRepTime %>%
+      mutate(dc.r.paraCombo = rep(c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 3), 
+             time = rep(c(1:simTimeMin, 1:simTimeMin), 3), 
+             gName = c(rep(gName1, simTimeMin*2), rep(gName2, simTimeMin*2), rep(gName3, simTimeMin*2))) %>%
+      pivot_longer(names_to = "reps", values_to = "transEffi", cols = 1:numTechReps) %>%
+      ggplot(aes(x=transEffi, fill=dc.r.paraCombo, color = dc.r.paraCombo)) +
+      geom_density(alpha=0.5) +
+      facet_wrap(~factor(gName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "none",
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            strip.text = element_text( color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            strip.background = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+    ) +
+      labs(x="") +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="Co-trans 100% RiboProtect 0"),  values = c("#1F78B4", "#FF7F00")) +
+      scale_fill_manual(values = c("#1F78B4", "#FF7F00")) +
+      scale_y_continuous(expand = c(0, 0)) +
+      coord_flip()
+
+
+    p1 + p2 + plot_layout(ncol = 2, width = c(4, 0.6))
+}
+
+```
+
+# figure 3.8.1
+```{r fig.height = 8, fig.width=7}
+# These three genes each has their mRNAconstant <, =, > mRNAvarying    mRNAabundance high
+TE_byTimeRep("YOR369C", "YHR064C", "YKL182W") + plot_annotation(tag_levels = 'A')
+
+ggsave(paste0(figureBaseFolder,"figure3.8.1.png"), dpi=200, height = 8, width = 7)
+
+```
+
+# Figure 3.8.2
+```{r fig.height = 8, fig.width=12}
+fig_a <- allSimInputOutput %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", MTE > 0.1) %>%
+  select(paraCombo, MTE, ORF) %>%
+  spread(paraCombo, MTE) %>%
+  ggplot(aes(x=mRNAconstant, y=dc_1_r_0)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed", color="blue") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(size = rel(1), color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Mean TE for mRNA constant'~(min^-1),
+           y = 'Mean TE for mRNA varying'~(min^-1))+
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.25, label.y.npc = 0.5, size=5) +
+      scale_x_log10() +
+      scale_y_log10() +
+      scale_color_manual(values = c("dc_1_r_0" = "#00BFC4"))
+
+
+fig_b <- allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0, RMTE > 0.8) %>%
+  ggplot(aes(x=RMTE, y=RMVTE, color = paraCombo)) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            strip.text = element_text(color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x ="Relative mean TE (excluding genes whose \nmRNAabundance=1 and internal controls)",
+           y = "Relative variance of TE \n") +
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`, `~")), label.x.npc = 0.2, label.y.npc = 0.6, size=5) +
+      scale_x_log10() + # not able to add the inset if i keep the log scales for either x or y
+      scale_y_log10() +
+      scale_color_manual(name="", labels=c("Co-trans 100% RiboProtect 0"), values = c("black"))
+
+
+fig_c <- allSimInputOutput %>%
+  filter(paraCombo=="mRNAconstant"|paraCombo=="dc_1_r_0", MTE > 0.1) %>%
+  select(paraCombo, MVTE, ORF, mRNAabundance) %>%
+  mutate(clr = ifelse(mRNAabundance>1, "mRNALevel>1", "mRNALevel=1")) %>%
+  spread(key = paraCombo, value = MVTE) %>%
+  ggplot(aes(x=mRNAconstant, y=dc_1_r_0, color=clr)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype="dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = c(0.7, 0.3),
+            legend.title = element_blank(),
+            strip.text = element_text(size = rel(1), color="white"),  # can't use element_blank() here because it gives error when p1+p2
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank(),
+            legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid') #gives legend a box around it
+    ) +
+      labs(x = 'Variance in TE for mRNA constant',
+           y = 'Variance in TE for mRNA varying')+
+      stat_cor(aes(label=paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.1, label.y.npc = 0.7, size=5) +
+      scale_x_log10() +
+      scale_y_log10() +
+      scale_color_manual(values = c("mRNALevel>1" = "black","mRNALevel=1" = "dark grey"))
+
+
+
+
+fig_d <- allSimInputOutput %>%
+  filter(paraCombo=="dc_1_r_0", ORF!="YER053C-A", mRNAabundance>1, mRNADecRateNeymotin_sec!=0, RMTE> 0.8) %>% # only 6 genes have RMTE <=0.8, exclude the gene with the 450min HL
+  select(ORF, RMTE) %>% 
+  ggplot() +
+  geom_density(aes(x=RMTE)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+        legend.position = c(0.6, 0.6),
+        axis.ticks.y = element_blank(),
+        plot.margin = margin(r = 0, unit = "pt"),
+        panel.grid = element_blank()) +
+  labs(x = "Relative variance in TE") +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  scale_x_log10()
+
+(fig_a + fig_b)/(fig_c + fig_d) + plot_annotation(tag_levels = "A")
+
+ggsave(paste0(figureBaseFolder,"figure3.8.2.png"), dpi=200, height = 8, width = 12)
+```
+
+
+
+
+# figure 3.8.3
+```{r fig.height = 6, fig.width = 8}
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+ggsave(paste0(figureBaseFolder,"figure3.8.3.png"), dpi=200, height = 6, width = 8)
+
+
+```
+
+```{r}
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, RMMDR) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion","relativemRNAdecayRate"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion","relativemRNAdecayRate")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_0.8_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, RMMDR) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion","relativemRNAdecayRate"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion","relativemRNAdecayRate")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_0.6_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, RMMDR) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion","relativemRNAdecayRate"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion","relativemRNAdecayRate")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_0.4_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, RMMDR) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion","relativemRNAdecayRate"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion","relativemRNAdecayRate")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_0.2_r_0", mRNADecRateNeymotin_sec != 0, ORF != "YER053C-A", ORF != "YLR106C") %>%
+  select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, RMMDR) %>%
+  `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "meanTranslationTime","CMDproportion","relativemRNAdecayRate"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, RMTE)) %>%
+  ggplot(aes(x = featureVals, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~factor(feature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","meanTranslationTime","CMDproportion","relativemRNAdecayRate")), scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+    labs(x = "",
+       y = "Relative mean translation efficiencies") +
+    scale_y_log10() +
+    theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+```
+
+
+# figure 3.8.4
+```{r fig.height=3, fig.width=8}
+fig_a <- allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>% 
+  select(ORF, RMTE, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMTE)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation \nefficiency (not showing < 0.7)") +
+  theme(
+    text = element_text(size = 13),
+  )
+
+fig_b <- allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>% 
+  select(ORF, RMTE, r, dc) %>%
+  ggplot(aes(x=r, y=RMTE)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="Ribosome protection",
+       y="Relative mean translation \nefficiency (not showing < 0.7)") +
+  theme(
+    text = element_text(size = 13),
+  )
+
+
+fig_a + fig_b + plot_annotation(tag_levels = "A")
+
+ggsave(paste0(figureBaseFolder,"figure3.8.4.png"), dpi=200, height = 3, width = 8)
+
+
+#################################################
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  select(ORF,dc,r,RMTE) %>% 
+  group_by(dc) %>% 
+  summarise(meanBydc = mean(RMTE)) %>% 
+  arrange(desc(meanBydc))
+
+
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  select(ORF,dc,r,RMTE) %>% 
+  group_by(r) %>% 
+  summarise(meanByr = mean(RMTE))
+
+
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  select(ORF,dc,r,RMTE) %>% 
+  compare_means(., formula = RMTE~dc, ref.group = "1")
+
+
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A") %>% 
+  select(ORF,dc,r,RMTE) %>% 
+  compare_means(., formula = RMTE~r, ref.group = "0")
+```
+
+
+
+```{r}
+allSimInputOutput %>%
+  mutate(shortOrLong = ifelse(geneLength_codon>=512, "long","short")) %>% 
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>% 
+  select(ORF, RMTE, r, dc, shortOrLong) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMTE, fill = shortOrLong)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation \nefficiency (not showing < 0.7)") +
+  theme(
+    text = element_text(size = 13),
+  )
+
+
+allSimInputOutput %>%
+  mutate(shortOrLong = ifelse(geneLength_codon>=512, "long","short")) %>% 
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>% 
+  select(ORF, RMTE, r, dc, shortOrLong) %>%
+  ggplot(aes(x=r, y=RMTE, fill = shortOrLong)) +
+  geom_boxplot(outlier.size = 0.1) +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation \nefficiency (not showing < 0.7)") +
+  theme(
+    text = element_text(size = 13),
+  )
+```
+
+
+# figure 3.8.5 see how the correlation between RMTE and the 5 seq features change over paraCombos
+```{r fig.height = 6, fig.width = 8}
+allSimInputOutput%>%  
+    filter(mRNADecRateNeymotin_sec != 0, paraCombo!="mRNAconstant") %>%
+    select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, paraCombo, dc, r) %>%
+    `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "TranslationTime", "CMDproportion","paraCombo", "dc", "r"))) %>% 
+    pivot_longer(names_to = "seqFeature", values_to = "featureVals", cols = 3:9) %>% 
+    group_by(paraCombo,seqFeature) %>% 
+    summarise(corrCoeff = cor(RMTE, featureVals)) %>% 
+    left_join(dc.r.df, by = "paraCombo") %>% 
+    split(.$seqFeature)
+
+
+allSimInputOutput%>%  
+    filter(mRNADecRateNeymotin_sec != 0, paraCombo!="mRNAconstant") %>%
+    select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, paraCombo, dc, r) %>%
+    `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "TranslationTime", "CMDproportion","paraCombo", "dc", "r"))) %>% 
+    pivot_longer(names_to = "seqFeature", values_to = "featureVals", cols = 3:9) %>% 
+    group_by(paraCombo,seqFeature) %>% 
+    summarise(corrCoeff = cor(RMTE, featureVals)) %>% 
+    left_join(dc.r.df, by = "paraCombo") %>% 
+    mutate(dc_fct = factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+    ungroup() %>% 
+    ggplot(aes(x = dc_fct, y = corrCoeff, color = r)) +
+    geom_point(size = 0.5) +
+    geom_line(aes(group = r)) +
+    facet_wrap(~factor(seqFeature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","TranslationTime","CMDproportion")), scales = "free", nrow = 3) +
+    theme_bw() +
+    theme(text = element_text(size = 13)) +    
+    labs(x = "CMD levels", y = "Pearson's correlation coefficient", color = "Ribosome\nprotection") #corr. coeff. between relative mean mRNA decay rates and seq features
+
+ggsave(paste0(figureBaseFolder,"figure3.8.5.png"), dpi=200, height = 6, width = 8)
+
+```
+
+```{r}
+allSimInputOutput%>%  
+    filter(mRNADecRateNeymotin_sec != 0, paraCombo!="mRNAconstant") %>%
+    select(ORF, RMTE, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, MTT, MMDP, paraCombo, dc, r) %>%
+    `colnames<-`(paste0("",c("ORF", "RMTE", "initiationProbability", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "TranslationTime", "CMDproportion","paraCombo", "dc", "r"))) %>% 
+    pivot_longer(names_to = "seqFeature", values_to = "featureVals", cols = 3:9) %>% 
+    group_by(paraCombo,seqFeature) %>% 
+    summarise(corrCoeff = cor(RMTE, featureVals)) %>% 
+    left_join(dc.r.df, by = "paraCombo") %>% 
+    mutate(dc_fct = factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+    ungroup() %>% 
+    ggplot(aes(x = r, y = corrCoeff, color = dc_fct)) +
+    geom_point(size = 0.5) +
+    geom_line(aes(group = dc_fct)) +
+    facet_wrap(~factor(seqFeature, levels = c("CAI","geneLength","initialmRNALevel","initiationProbability","mRNADecayRate","TranslationTime","CMDproportion")), scales = "free", nrow = 3) +
+    theme_bw() +
+    theme(text = element_text(size = 13)) +    
+    labs(x = "Ribosome protection", y = "Pearson's correlation coefficient", color = "CMD\nlevels") #corr. coeff. between relative mean mRNA decay rates and seq features
+```
+
+
+
+```{r}
+allSimInputOutput %>%
+  filter(paraCombo!="mRNAconstant", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A", RMTE>0.7) %>%
+  select(ORF, RMTE, r, dc) %>%
+  mutate(dc_fct=factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+  ggplot(aes(x=dc_fct, y=RMTE, fill=r)) +
+  geom_boxplot(outlier.size = 0.1) +
+  #scale_y_log10() +
+  geom_hline(aes(yintercept=median(as.numeric(unlist(allSimInputOutput %>% filter(paraCombo=="dc_1_r_0", mRNADecRateNeymotin_sec!=0, ORF!="YER053C-A")%>%select(RMTE))))),
+             color="red", linetype="dashed") +
+  theme_bw() +
+  labs(x="CMD level",
+       y="Relative mean translation \nefficiency (not showing < 0.7)") +
+  scale_x_discrete(labels=c("1"="100%", "0.8"="80%", "0.6"="60%", "0.4"="40%", "0.2"="20%", "0"="0")) +
+  scale_fill_discrete(name = "Ribosome protection index") +
+  theme(
+    text = element_text(size = 13),
+    legend.position = "top",
+    legend.justification = "left"
+  )
+```
+
+
+
+```{r fig.height = 6, fig.width = 8}
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = CAI, y = RMTE)) +
+    geom_point(size = 0.3) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'CAI',
+             y = 'Relative mean translation efficiencies') +
+        geom_smooth(method = "lm") +
+        stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.5, label.y.npc = 0.2, size = 4) +
+        scale_y_log10()
+###########################################################
+
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = geneLength_codon, y = RMTE)) +
+    geom_point(size = 0.3) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'Gene length (codon)',
+             y = 'Relative mean translation efficiencies') +
+        geom_smooth(method = "lm") +
+        stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.02, label.y.npc = 0.3, size = 4) +
+        scale_x_log10() +
+        scale_y_log10()
+###########################################################
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = mRNAabundance, y = RMTE)) +
+    geom_point(size = 0.3) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'Initial mRNA abundances',
+             y = 'Relative mean translation efficiencies') +
+        geom_smooth(method = "lm") +
+        stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.5, label.y.npc = 0.3, size = 4) +
+        scale_x_log10() +
+        scale_y_log10()
+###########################################################
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = iniProb, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'Initiation probabilities',
+             y = 'Relative mean translation efficiencies') +
+        geom_smooth(method = "lm") +
+        stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.55, label.y.npc = 0.2, size = 4) +
+        scale_x_log10() +
+        scale_y_log10()
+
+###########################################################
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    ggplot(aes(x = mRNADecRateNeymotin_sec, y = RMTE)) +
+    geom_point(size = 0.5) +
+    facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+              legend.position = "none",
+              plot.margin = margin(r = 0, unit = "pt"),
+              panel.grid = element_blank()
+      ) +
+        labs(x = 'mRNA decay rates'~(sec^-1),
+             y = 'Relative mean translation efficiencies') +
+        geom_smooth(method = "lm") +
+        stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.4, label.y.npc = 0.2, size = 4) +
+        scale_x_log10() +
+        scale_y_log10()
+
+###########################################################
+
+###########################################################
+
+###########################################################
+
+###########################################################
+
+```
+

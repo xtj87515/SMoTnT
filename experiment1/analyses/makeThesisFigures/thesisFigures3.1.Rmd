@@ -1,0 +1,186 @@
+---
+title: "Tongji thesis figures for Chapter 3: Results"
+output: html_notebook
+---
+
+Load libraries and public variables
+```{r, include = FALSE} 
+# This chunk will be evaluated but the output is suppressed
+rmarkdown::render("../../publicVariables/createPublicVariables.Rmd")
+```
+
+```{r}
+# File that contains simulation output data in a HDF5 directory structure specified in "/publicVariables/createPublicVariables.Rmd"
+simOutputH5 <- paste0("../../dataProcessing/simOutputH5Data/", experimentID, "_output.h5")
+
+# A comprehensive table that contains all simulation input and calculated output metrics
+allSimInputOutput <- read_feather("../allSimInputOutput.feather")
+
+# This folder contains raw output files from the simulations. This is needed for calculate_para_sp_mcpsr()
+rawSimOutFolder <- "/team/batch_SMOTNT/experiment1_output"
+
+# Where figures are stored
+figureBaseFolder <- "../thesisFigures/"
+```
+
+
+# prep for 3.1.1
+```{r}
+# protein synthesized per minute
+mRNAcount_byTimeRep <- function(gName1, gName2, gName3)
+{
+    mRNAabundRealTime <- lapply(c(gName1, gName2, gName3), function(x){c((h5read(simOutputH5, paste0(gsub("-", "", x), "/gene_sp_mRNAcount_perMin/dc_1_r_0")))[1, ],  rep(simInputFeatures$mRNAabundance[which(simInputFeatures$ORF==x)], simTimeMin))})
+    mRNAabundRealTime <- as_tibble(do.call(cbind, mRNAabundRealTime))
+    colnames(mRNAabundRealTime) <- c(gName1, gName2, gName3)
+    
+    mRNAabundRealTime %>%
+      mutate(dc.r.paraCombo = c(rep("dc_1_r_0", simTimeMin), rep("mRNAconstant", simTimeMin)), 
+             time_min = c(1:simTimeMin, 1:simTimeMin)) %>%
+      pivot_longer(names_to = "geneName",values_to = "mRNAabundance", cols = 1:3) %>%
+      ggplot(aes(x = time_min, y = mRNAabundance, color=dc.r.paraCombo)) +
+      geom_line() +
+      facet_wrap(~factor(geneName, levels=c(gName1, gName2, gName3)), scale="free", nrow=3) +
+      theme_bw() +
+      theme(text = element_text(size = 13),
+            legend.position = "top",
+            legend.justification = "left",
+            strip.background = element_blank(),
+            panel.grid = element_blank(),
+            plot.margin = margin(r = 0, unit = "pt")
+            )+
+      labs(x="Time(min)",
+           y="Real-time mRNA abundance \n(single replicate)") +
+      scale_color_manual(name="", labels=c("mRNAconstant"="mRNAconstant", "dc_1_r_0"="100% CMD 0 ribosome protection"), values = c("#1F78B4", "#FF7F00")) 
+}
+
+```
+
+# figure 3.1.1, real-time mRNA abundance for three example genes
+```{r fig.height=7, fig.width=7}
+mRNAcount_byTimeRep("YOR369C", "YHR064C", "YKL182W") 
+
+ggsave(paste0(figureBaseFolder,"figure3.1.1.png"), dpi=200, height = 7, width = 7)
+```
+
+
+# figure 3.1.2
+```{r fig.height = 5, fig.width =  9}
+allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+  ggplot(aes(x = MMC, y = MVMC)) +
+  geom_point(size = 0.5) +
+  geom_abline(linetype = "dashed") +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      labs(x = 'Mean of mRNA abundance',
+           y = 'Variance of mRNA abundance') +
+      geom_smooth(method = "lm") +
+      stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.7, label.y.npc = 0.4, size = 5) +
+      scale_x_log10() +
+      scale_y_log10()
+
+ggsave(paste0(figureBaseFolder,"figure3.1.2.png"), dpi=200, height = 6, width = 9)
+
+```
+
+
+# figure 3.1.3
+```{r fig.height = 5, fig.width =  9}
+allSimInputOutput %>%
+  filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+  mutate(varMeanRatio = MVMC/MMC) %>% 
+  ggplot(aes(x = varMeanRatio)) +
+  geom_density() +
+  facet_grid(dc~r, labeller = labeller(dc = c("1" = "100%", "0.8" = "80%", "0.6" = "60%", "0.4" = "40%", "0.2" = "20%", "0" = "CMD 0%"), r = c("0" = "Ribosome protection  =  0", "0.1" = "0.1", "0.4" = "0.4", "1" = "1"), label_parsed)) +
+  theme_bw() +
+  theme(text = element_text(size = 13),
+            legend.position = "none",
+            plot.margin = margin(r = 0, unit = "pt"),
+            panel.grid = element_blank()
+    ) +
+      scale_y_continuous() +
+      labs(x = 'Variance to mean ratio of mRNA abundance') +
+      geom_vline(xintercept = 1, linetype = "dashed")
+
+ggsave(paste0(figureBaseFolder,"figure3.1.3.png"), dpi=200, height = 5, width = 9)
+
+
+```
+
+```{r}
+allSimInputOutput %>%
+    filter(paraCombo != "mRNAconstant", ORF != "YER053C-A", mRNADecRateNeymotin_sec != 0) %>%
+    mutate(varMeanRatio = MVMC/MMC) %>% 
+    select(ORF, dc, r, varMeanRatio) %>% 
+    group_by(dc, r) %>% 
+    summarise(ratioMean = mean(varMeanRatio, na.rm = TRUE)) %>% 
+    arrange(., ratioMean)
+
+```
+
+
+# figure 3.1.4
+```{r fig.height = 3, fig.width = 8}
+allSimInputOutput%>%  
+  filter(paraCombo == "dc_1_r_0", mRNADecRateNeymotin_sec != 0) %>%
+  select(ORF, MVMC, MMC, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10) %>%
+  mutate(varMeanRatio = MVMC/MMC) %>%
+  filter(varMeanRatio>0.5) %>%  # filter out the 1 outlier
+  `colnames<-`(paste0("",c("ORF", "MVMC", "MMC", "initiationProb", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "varMeanRatio"))) %>%
+  pivot_longer(names_to = "feature", values_to = "featureVals", !c(ORF, MVMC, MMC, varMeanRatio)) %>%
+  ggplot(aes(x = featureVals, y = varMeanRatio)) +
+    geom_point(size = 0.5) +
+    facet_wrap(~feature, scales = "free", nrow = 1, strip.position = "bottom") +
+    theme_bw() +
+    geom_smooth(method = "lm") +
+    stat_cor(aes(label = paste(..r.label..,  sep = "~`,`~")), label.x.npc = 0.3, label.y.npc = 0.05, size = 3) +
+  labs(x = "",
+       y = "Variance to mean ratio\nof mRNA abundance") +
+    scale_y_log10() +
+  theme(text = element_text(size = 13),
+        strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside"     #to put the strip labels below x-axis
+)
+
+ggsave(paste0(figureBaseFolder,"figure3.1.4.png"), dpi=200, height = 3, width = 8)
+
+```
+
+# see if the high correlation with decay rate is true for all para combos 
+```{r fig.height = 4, fig.width = 8}
+allSimInputOutput%>%  #var1:"MeanProteinSynRate".. var2:"mRNAconstant", "dc_1_r_0"
+    filter(mRNADecRateNeymotin_sec != 0, paraCombo!="mRNAconstant") %>%
+    select(ORF, MVMC, MMC, iniProb_log10, mRNAabundance_log10, mRNADecRateNeymotin_sec_log10, CAI, geneLength_codon_log10, paraCombo, dc, r) %>%
+    mutate(varMeanRatio = MVMC/MMC) %>%
+    filter(varMeanRatio>0.5) %>%  # filter out the 1 outlier %>% 
+    select(-MVMC, -MMC) %>% 
+    `colnames<-`(paste0("",c("ORF", "initiationProb", "initialmRNALevel", "mRNADecayRate", "CAI", "geneLength", "paraCombo", "dc", "r", "varMeanRatio"))) %>% 
+    pivot_longer(names_to = "seqFeature", values_to = "featureVals", cols = 2:6) %>% 
+    group_by(paraCombo,seqFeature) %>% 
+    summarise(corrCoeff = cor(varMeanRatio, featureVals)) %>% 
+    left_join(dc.r.df, by = "paraCombo") %>% 
+    mutate(dc_fct = factor(dc, levels=c("1", "0.8", "0.6", "0.4", "0.2", "0"))) %>%
+    ungroup() %>% 
+    ggplot(aes(x = dc_fct, y = corrCoeff, color = r)) +
+    geom_point(size = 0.5) +
+    geom_line(aes(group = r)) +
+    facet_wrap(~seqFeature, scales = "free", nrow = 2, strip.position = "bottom") +
+    theme_bw() +
+    theme(text = element_text(size = 13),
+          strip.text = element_text(color = "black"),  # can't use element_blank() here because it gives error when p1+p2
+        strip.background = element_blank(),  
+        strip.placement = "outside") +     #to put the strip labels below x-axis
+    labs(x = "", y = "Pearson's correlation coefficient")
+
+    
+
+```
+
+
+
