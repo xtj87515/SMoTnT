@@ -7,7 +7,7 @@ DATE: Apr 28, 2021
 
 gcc sourceCode/SMOTNT.c -g -lm -lgsl -lgslcblas -mtune=generic -O3 -o sourceCode/SMOTNT
 
-./sourceCode/SMOTNT -Tt 1500 -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc 0.2 -r 0.4 -F ../publicInput/truncated_S.cer.genom -C ../publicInput/S.cer.tRNA -D input/allGenesDecrEqualsSynrWithScaling_dc_0.2_r_0.4_S.cer.mRNA.ini.abndc.syn.dec -s 16629 -O output/output.seed.16629_dc_0.2_r_0.4_allGenesDecrEqualsSynrScaling -p1 -p2 -p3 -p4 -p6 -p7 
+./sourceCode/SMOTNT -Tt 1500 -Tb 1000 -R 200000 -t 3300000 -N 4839 -dc 0.2 -r 0.4 -F ../../publicInput/S.cer.genom -C ../../publicInput/S.cer.tRNA -D simInput/allGenesDecrEqualsSynrWithScaling_dc_0.2_r_0.4_S.cer.mRNA.ini.abndc.syn.dec.tsv -s 16629 -O simOutput/output.seed.16629_dc_0.2_r_0.4_allGenesDecrEqualsSynrScaling -p1 -p2 -p3 -p4 -p6 -p7 
 
 
 Options:
