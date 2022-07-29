@@ -7,10 +7,11 @@ experiment*/analyses/figures/*
 experiment*/analyses/allSimInputOutput.feather
 experiment*/analyses/calculatedMetrics/*.feather
 experiment*/analyses/externalData/*.feather
-experiment1/analyses/defenseFigures/*
-experiment1/analyses/thesisFigures/*
-experiment1/analyses/makeThesisFigures/*
-experiment1/analyses/defenseFigures*
+experiment*/analyses/defenseFigures/*.png
+experiment*/analyses/thesisFigures/*.png
+experiment*/analyses/makeThesisFigures/*.Rmd
+experiment*/analyses/makeThesisFigures/*.nb.html
+experiment*/analyses/defenseFigures*
 experiment*/notForPublication/*
 experiment*/simulations/trialH5data/
 experiment*/analyses/thesisFigures/*
